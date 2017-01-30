@@ -14,7 +14,7 @@ X = normalizeColumns(X)
 
 K=3
 
-findClusters(X,K,plot='f')
+findClusters(X,K)
 
 
 
