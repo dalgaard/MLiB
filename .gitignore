@@ -1,2 +1,6 @@
+solution.pdf
+*.log
+*.aux
+*.out
 *pycache*
 mySpace
