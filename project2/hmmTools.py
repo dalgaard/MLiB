@@ -1,24 +1,9 @@
-import numpy as np
-import numpy.linalg as npl
-from random import randrange,random
-import matplotlib.pyplot as plt
+from math import log
 
 class Hmm(object):
     
     __slots__ = ['hidden', 'observables', 'pi', 'A', 'emissions']
     
-    def hiddenStates(self):
-        '''
-        
-        '''
-        return self.hidden
-
-    def observableStates(self):
-        '''
-        
-        '''
-        return self.observables
-
     def __init__(self, file):
         self.hidden = []
         self.observables = []
@@ -44,4 +29,15 @@ class Hmm(object):
                 i += 2+len(self.hidden)
             else:
                 i += 1
-            
+
+    def logLikelihood(self, hiddenSequence, observedSequence):
+        hidden_index = [ self.hidden.index(h) for h in hiddenSequence ]
+        observed_index = [ self.observables.index(o) for o in observedSequence ]
+        ll = 0.0
+        for i in range(len(hidden_index)):
+            if i == 0:
+                ll += log(self.pi[hidden_index[0]])
+            else:
+                ll += log(self.A[hidden_index[i-1]][hidden_index[i]])
+            ll += log(self.emissions[hidden_index[i]][observed_index[i]])
+        return ll
