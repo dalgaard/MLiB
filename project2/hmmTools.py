@@ -105,21 +105,21 @@ class HmmSequenceAnalyzer(object):
             print("  "+self.Hmm.hidden[self.viterbiTrace[n]]+"  ",end="\t")
         print()
         for n in range(len(self.viterbiTrace)):
-            print("{:5d}".format(self.viterbiTrace[n]),end='\t')
+            print("{:3d} ".format(self.viterbiTrace[n]),end='\t')
         print()
         if( len(self.beta) != 0):
             for n in range(len(self.viterbiTrace)):
                 print("{:5.2f}".format(100*self.getPosterior(self.viterbiTrace[n],n)),end='\t')
             print()
-            for n in range(len(self.viterbiTrace)):
-                print("{:5.2f}".format(100*self.getPosterior(0,n)),end='\t')
-            print()
-            for n in range(len(self.viterbiTrace)):
-                print("{:5.2f}".format(100*self.getPosterior(1,n)),end='\t')
-            print()
-            for n in range(len(self.viterbiTrace)):
-                print("{:5.2f}".format(100*self.getPosterior(2,n)),end='\t')
-            print()
+            #for n in range(len(self.viterbiTrace)):
+            #    print("{:5.2f}".format(100*self.getPosterior(0,n)),end='\t')
+            #print()
+            #for n in range(len(self.viterbiTrace)):
+            #    print("{:5.2f}".format(100*self.getPosterior(1,n)),end='\t')
+            #print()
+            #for n in range(len(self.viterbiTrace)):
+            #    print("{:5.2f}".format(100*self.getPosterior(2,n)),end='\t')
+            #print()
             
     def getPosterior(self,k,n):
         if len(self.alpha) == 0 :
