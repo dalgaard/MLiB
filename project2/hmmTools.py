@@ -50,6 +50,9 @@ class HmmSequenceAnalyzer(object):
             if i == 0:
                 ll += log(self.Hmm.pi[hidden_index[0]])
             else:
+                prob = self.Hmm.A[hidden_index[i-1]][hidden_index[i]]
+                if abs(prob)<1e-13 :
+                    return -float("Inf")
                 ll += log(self.Hmm.A[hidden_index[i-1]][hidden_index[i]])
             ll += log(self.Hmm.emissions[hidden_index[i]][observed_index[i]])
         return ll
@@ -58,7 +61,7 @@ class HmmSequenceAnalyzer(object):
     def forward(self):
         N = len(self.sequence)
         # initialize
-        delta = [ self.Hmm.pi[k] * self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])] for k in range(self.Hmm.K) ]
+        delta = [ self.Hmm.pi[2-k] * self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])] for k in range(self.Hmm.K) ]
         self.c = [ sum(delta) if n== 0 else 0.0 for n in range(N) ]
         self.alpha = [[ delta[k]/self.c[n] if n==0 else 0.0 for n in range(N) ] for k in range(self.Hmm.K) ]
         omega = [ [ d if k == 0 else 0.0 for d in delta ] for k  in range(2) ]
@@ -98,28 +101,36 @@ class HmmSequenceAnalyzer(object):
             for k in range(self.Hmm.K):
                 self.beta[k][n] = delta[k] / self.c[n+1]
         
-    def printViterbiTrace(self):
+    def getTrace(self,choice="viterbi"):
+        trace = ""
+        if(choice=="viterbi"):
+            for n in range(len(self.viterbiTrace)):
+                trace += self.Hmm.hidden[self.viterbiTrace[n]]
+        else:
+            for n in range(len(self.viterbiTrace)):
+                trace += self.Hmm.hidden[self.getArgMaxPosterior(n)]
+        return trace
+        
+    
+    def printViterbiTrace(self,compact=True):
         if(len(self.viterbiTrace) == 0):
             self.forward()
-        for n in range(len(self.viterbiTrace)):
-            print("  "+self.Hmm.hidden[self.viterbiTrace[n]]+"  ",end="\t")
-        print()
-        for n in range(len(self.viterbiTrace)):
-            print("{:3d} ".format(self.viterbiTrace[n]),end='\t')
-        print()
-        if( len(self.beta) != 0):
+        if(compact):
             for n in range(len(self.viterbiTrace)):
-                print("{:5.2f}".format(100*self.getPosterior(self.viterbiTrace[n],n)),end='\t')
+                print(self.Hmm.hidden[self.viterbiTrace[n]],end="")
             print()
-            #for n in range(len(self.viterbiTrace)):
-            #    print("{:5.2f}".format(100*self.getPosterior(0,n)),end='\t')
-            #print()
-            #for n in range(len(self.viterbiTrace)):
-            #    print("{:5.2f}".format(100*self.getPosterior(1,n)),end='\t')
-            #print()
-            #for n in range(len(self.viterbiTrace)):
-            #    print("{:5.2f}".format(100*self.getPosterior(2,n)),end='\t')
-            #print()
+        else:
+            for n in range(len(self.viterbiTrace)):
+                print("  "+self.Hmm.hidden[self.viterbiTrace[n]]+"  ",end="\t")
+            print()
+            for n in range(len(self.viterbiTrace)):
+                print("{:3d} ".format(self.viterbiTrace[n]),end='\t')
+            print()
+            if( len(self.beta) != 0):
+                for n in range(len(self.viterbiTrace)):
+                    print("{:5.2f}".format(100*self.getPosterior(self.viterbiTrace[n],n)),end='\t')
+                print()
+    
             
     def getPosterior(self,k,n):
         if len(self.alpha) == 0 :
