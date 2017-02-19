@@ -45,3 +45,42 @@ class HmmLoaderTestCase(unittest.TestCase):
         self.assertAlmostEqual(sa.logLikelihood(list("ooooMMMMMMMMMMMMMMMooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooMMMMMMMMMMMMMMMMMMMMMMMoooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo")),
             -1849.073368,
             6)
+
+def test_generator(obs, expectedTrace, expectedPosterior, method="posterior"):
+    def test(self):
+        sa = HmmSequenceAnalyzer(self.hmm, obs)
+        trace = sa.getTrace(method)
+        posterior = sa.logLikelihood(trace)
+        self.assertEqual(trace, expectedTrace)
+        self.assertAlmostEqual(posterior, expectedPosterior, 6)
+    return test
+
+
+def generateTest(content, method):
+    for i in range(len(content)):
+        l = content[i]
+        if len(l) > 0 and l[0] == '>':
+            test_name = 'test_{}_{}'.format(method, l[1:])
+            i += 1
+            obs = content[i]
+            i += 1
+            hid = content[i][2:]
+            i += 1
+            posterior = float(content[i][15:])
+            i += 1
+            test = test_generator(obs, hid, posterior, method)
+            setattr(HmmLoaderTestCase, test_name, test)
+        else:
+            i += 1
+
+
+if __name__ == '__main__':
+    with open("test-sequences-project2-posterior-output.txt",'r') as f:
+        content = f.readlines()
+    content = [x.strip() for x in content]
+    generateTest(content, 'posterior')
+    with open("test-sequences-project2-viterbi-output.txt",'r') as f:
+        content = f.readlines()
+    content = [x.strip() for x in content]
+    generateTest(content, 'viterbi')
+    unittest.main()

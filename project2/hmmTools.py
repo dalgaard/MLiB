@@ -138,6 +138,7 @@ class HmmSequenceAnalyzer(object):
         if len(self.beta) == 0 :
             self.Hmm.backward()
         return self.alpha[k][n] * self.beta[k][n]
+
     def getArgMaxPosterior(self,n):
         maxP = 0.0
         kmax = 0
