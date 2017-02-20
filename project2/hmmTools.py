@@ -1,4 +1,4 @@
-from math import log
+from logsumTools import *
 import numpy as np
 
 class Hmm(object):
@@ -34,6 +34,7 @@ class Hmm(object):
         self.N = len(self.emissions[0])
     
 class HmmSequenceAnalyzer(object):
+    
     __slots__ = ['Hmm','sequence', 'omega', 'alpha','beta','c','viterbiTrace']
     
     def __init__(self, Hmm, observedSequence):
@@ -41,6 +42,8 @@ class HmmSequenceAnalyzer(object):
         self.sequence = observedSequence
         self.forward()
         self.backward()
+        #self.logForward()
+        #self.logBackward()
     
     def logLikelihood(self, hiddenSequence):
         hidden_index = [ self.Hmm.hidden.index(h) for h in hiddenSequence ]
@@ -59,51 +62,83 @@ class HmmSequenceAnalyzer(object):
         
     def forward(self):
         N = len(self.sequence)
+        K = self.Hmm.K
 
-        # delta contains the initial probabilities for the forward and viterbi, note that pi seems to contain the initial probabilities in reverse order!
-        delta = [ self.Hmm.pi[self.Hmm.K-1-k] * self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])] for k in range(self.Hmm.K) ]
+        # delta contains the initial probabilities for the forward and viterbi
+        delta = [ self.Hmm.pi[k] * self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])] for k in range(K) ]
         
         # initialize c as the sum of the deltas
         self.c = [ sum(delta) if n==0 else 0.0 for n in range(N) ]
         
         # initialize alpha and omega
-        self.alpha = [[ delta[k]/self.c[n] if n==0 else 0.0 for n in range(N) ] for k in range(self.Hmm.K) ]
-        self.omega = [[ log(delta[k]) if n==0 else -float("Inf") for n in range(N) ] for k  in range(self.Hmm.K) ]
+        self.alpha = [[ delta[k]/self.c[n] if n==0 else 0.0 for n in range(N) ] for k in range(K) ]
+        self.omega = [[ log(delta[k]) if n==0 else -float("Inf") for n in range(N) ] for k  in range(K) ]
         
         # calculate subsequent steps
         for n in range(1,N):
             emissionIDX = self.Hmm.observables.index(self.sequence[n])
-            delta = [ 0.0 for k in range(self.Hmm.K) ]
-            for k in range(self.Hmm.K):
-                ompri = [ -float("Inf") for kk in range(self.Hmm.K) ]
-                for kk in range(self.Hmm.K):
-                    delta[k] += self.alpha[kk][n-1] * self.Hmm.A[k][kk]
-                    if ( abs(self.Hmm.A[k][kk]) > 1e-13):
-                        ompri[kk] = self.omega[kk][n-1] + log(self.Hmm.A[k][kk])
+            delta = [ 0.0 for k in range(K) ]
+            for k in range(K):
+                ompri = [ -float("Inf") for kk in range(K) ]
+                for kk in range(K):
+                    delta[k] += self.alpha[kk][n-1] * self.Hmm.A[kk][k]
+                    if ( abs(self.Hmm.A[kk][k]) > 1e-13):
+                        ompri[kk] = self.omega[kk][n-1] + log(self.Hmm.A[kk][k])
                 self.omega[k][n] = log(self.Hmm.emissions[k][emissionIDX]) + max(ompri)
                 delta[k] = self.Hmm.emissions[k][emissionIDX] * delta[k]
             self.c[n] = sum(delta)
-            for k in range(self.Hmm.K):
+            for k in range(K):
                 self.alpha[k][n] = delta[k] / self.c[n]
+    
+    def logForward(self):
+        N = len(self.sequence)
+        K = self.Hmm.K
+        delta = [ self.Hmm.pi[k] * self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])] for k in range(K)]
+        
+        # initialize alpha and omega
+        self.alpha = [[ log(delta[k]) if n==0 else float("-inf") for n in range(N) ] for k in range(K) ]
+        
+        # calculate subsequent steps
+        for n in range(1,N):
+            emissionIDX = self.Hmm.observables.index(self.sequence[n])
+            for k in range(K):
+                ls = float("-inf")
+                for kk in range(K):
+                    ls = logsum(ls, self.alpha[kk][n-1] + log(self.Hmm.A[kk][k]))
+                self.alpha[k][n] = ls+log(self.Hmm.emissions[k][emissionIDX])
     
     def backward(self):
         N = len(self.sequence)
+        K = self.Hmm.K
+        
         # initialize
-        self.beta = [[ 1.0 if n==N-1 else 0.0 for n in range(N) ] for k in range(self.Hmm.K) ]
-        self.viterbiTrace = [ np.argmax([self.omega[k][n] for k in range(self.Hmm.K)]) if n==N-1 else -1 for n in range(N) ]
+        self.beta = [[ 1.0 if n==N-1 else 0.0 for n in range(N) ] for k in range(K) ]
+        self.viterbiTrace = [ np.argmax([self.omega[k][n] for k in range(K)]) if n==N-1 else -1 for n in range(N) ]
         
         # calculate subsequent steps
         for n in range(N-2,-1,-1):
             kprev = self.viterbiTrace[n+1]
             emissionIDX = self.Hmm.observables.index(self.sequence[n+1])
-            ompri = [ -float("Inf") for k in range(self.Hmm.K) ]
-            for k in range(self.Hmm.K):
-                for kk in range(self.Hmm.K):
-                    self.beta[k][n] += (self.beta[kk][n+1]/self.c[n+1]) * self.Hmm.A[kk][k] * self.Hmm.emissions[kk][emissionIDX]
+            ompri = [ -float("Inf") for k in range(K) ]
+            for k in range(K):
+                for kk in range(K):
+                    self.beta[k][n] += (self.beta[kk][n+1]/self.c[n+1]) * self.Hmm.A[k][kk] * self.Hmm.emissions[kk][emissionIDX]
                 if( self.Hmm.emissions[kprev][emissionIDX] > 1e-13 and  self.Hmm.A[kprev][k] > 1e-13 ):
                     ompri[k] = self.omega[k][n] + log(self.Hmm.A[kprev][k]) + log(self.Hmm.emissions[kprev][emissionIDX]) 
             self.viterbiTrace[n] = np.argmax(ompri)
                 
+    def logBackward(self):
+        N = len(self.sequence)
+        K = self.Hmm.K
+        # initialize
+        self.beta = [[ 0.0 if n==N-1 else float("-inf") for n in range(N) ] for k in range(K) ]
+        
+        # calculate subsequent steps
+        for n in range(N-2,-1,-1):
+            emissionIDX = self.Hmm.observables.index(self.sequence[n+1])
+            for k in range(K):
+                for kk in range(K):
+                    self.beta[k][n] = logsum(self.beta[k][n],self.beta[kk][n+1] + log(self.Hmm.A[k][kk]) + log(self.Hmm.emissions[kk][emissionIDX]))
         
     def getTrace(self,choice="viterbi"):
         trace = ""
@@ -113,29 +148,13 @@ class HmmSequenceAnalyzer(object):
         elif choice == "posterior":
             for n in range(len(self.viterbiTrace)):
                 trace += self.Hmm.hidden[self.getArgMaxPosterior(n)]
+        elif choice == "logPosterior":
+            for n in range(len(self.alpha[0])):
+                trace += self.Hmm.hidden[self.getArgMaxLogPosterior(n)]
         else:
             print("unrecognized option: "+choice)
             exit()
         return trace
-        
-    def printViterbiTrace(self,compact=True):
-        if(len(self.viterbiTrace) == 0):
-            self.forward()
-        if(compact):
-            for n in range(len(self.viterbiTrace)):
-                print(self.Hmm.hidden[self.viterbiTrace[n]],end="")
-            print()
-        else:
-            for n in range(len(self.viterbiTrace)):
-                print("  "+self.Hmm.hidden[self.viterbiTrace[n]]+"  ",end="\t")
-            print()
-            for n in range(len(self.viterbiTrace)):
-                print("{:3d} ".format(self.viterbiTrace[n]),end='\t')
-            print()
-            if( len(self.beta) != 0):
-                for n in range(len(self.viterbiTrace)):
-                    print("{:5.2f}".format(100*self.getPosterior(self.viterbiTrace[n],n)),end='\t')
-                print()
     
     def getPosterior(self,k,n):
         if len(self.alpha) == 0 :
@@ -146,3 +165,5 @@ class HmmSequenceAnalyzer(object):
     
     def getArgMaxPosterior(self,n):
         return np.argmax([self.getPosterior(k,n) for k in range(self.Hmm.K)])
+    def getArgMaxLogPosterior(self,n):
+        return np.argmax([ self.alpha[k][n] + self.beta[k][n] for k in range(self.Hmm.K)])
