@@ -7,10 +7,9 @@ with open('test-sequences-project2.txt','r') as f:
         if line.startswith(">"):
             sa = HmmSequenceAnalyzer(h,lines[iline+1].strip())
             print(line.strip())
-            print("#")
             print(lines[iline+1].strip())
-            trace=sa.getTrace("posterior")
-            print(trace)
-            print(", log P(x,z) = ",sa.logLikelihood(trace))
+            trace=sa.getTrace("viterbi")
+            print("# "+trace)
+            print("; log P(x,z) =",sa.logLikelihood(trace))
             print()
 
