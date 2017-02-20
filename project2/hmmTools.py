@@ -59,12 +59,14 @@ class HmmSequenceAnalyzer(object):
         
     def forward(self):
         N = len(self.sequence)
-        
 
-        # initialize
         # delta contains the initial probabilities for the forward and viterbi, note that pi seems to contain the initial probabilities in reverse order!
         delta = [ self.Hmm.pi[self.Hmm.K-1-k] * self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])] for k in range(self.Hmm.K) ]
-        self.c = [ sum(delta) if n== 0 else 0.0 for n in range(N) ]
+        
+        # initialize c as the sum of the deltas
+        self.c = [ sum(delta) if n==0 else 0.0 for n in range(N) ]
+        
+        # initialize alpha and omega
         self.alpha = [[ delta[k]/self.c[n] if n==0 else 0.0 for n in range(N) ] for k in range(self.Hmm.K) ]
         self.omega = [[ log(delta[k]) if n==0 else -float("Inf") for n in range(N) ] for k  in range(self.Hmm.K) ]
         
@@ -94,16 +96,13 @@ class HmmSequenceAnalyzer(object):
         for n in range(N-2,-1,-1):
             kprev = self.viterbiTrace[n+1]
             emissionIDX = self.Hmm.observables.index(self.sequence[n+1])
-            delta = [ 0.0 for k in range(self.Hmm.K) ]
             ompri = [ -float("Inf") for k in range(self.Hmm.K) ]
             for k in range(self.Hmm.K):
                 for kk in range(self.Hmm.K):
-                    delta[k] += self.beta[kk][n+1] * self.Hmm.A[kk][k] * self.Hmm.emissions[kk][emissionIDX]
+                    self.beta[k][n] += (self.beta[kk][n+1]/self.c[n+1]) * self.Hmm.A[kk][k] * self.Hmm.emissions[kk][emissionIDX]
                 if( self.Hmm.emissions[kprev][emissionIDX] > 1e-13 and  self.Hmm.A[kprev][k] > 1e-13 ):
                     ompri[k] = self.omega[k][n] + log(self.Hmm.A[kprev][k]) + log(self.Hmm.emissions[kprev][emissionIDX]) 
             self.viterbiTrace[n] = np.argmax(ompri)
-            for k in range(self.Hmm.K):
-                self.beta[k][n] = delta[k] / self.c[n+1]
                 
         
     def getTrace(self,choice="viterbi"):
@@ -111,9 +110,12 @@ class HmmSequenceAnalyzer(object):
         if(choice=="viterbi"):
             for n in range(len(self.viterbiTrace)):
                 trace += self.Hmm.hidden[self.viterbiTrace[n]]
-        else:
+        elif choice == "posterior":
             for n in range(len(self.viterbiTrace)):
                 trace += self.Hmm.hidden[self.getArgMaxPosterior(n)]
+        else:
+            print("unrecognized option: "+choice)
+            exit()
         return trace
         
     def printViterbiTrace(self,compact=True):
@@ -143,10 +145,4 @@ class HmmSequenceAnalyzer(object):
         return self.alpha[k][n] * self.beta[k][n]
     
     def getArgMaxPosterior(self,n):
-        maxP = 0.0
-        kmax = 0
-        for k in range(self.Hmm.K):
-            if maxP < self.getPosterior(k,n) :
-                maxP = self.getPosterior(k,n)
-                kmax = k
-        return kmax
+        return np.argmax([self.getPosterior(k,n) for k in range(self.Hmm.K)])
