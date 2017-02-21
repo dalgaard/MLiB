@@ -17,6 +17,7 @@ class HmmLoaderTestCase(unittest.TestCase):
 
     def setUp(self):
         self.hmm = Hmm('hmm-tm.txt')
+        self.maxDiff = None
 
     def test_hidden(self):
         self.assertEqual(self.hmm.hidden, ['i','M', 'o'], 'incorrect hidden states')
@@ -55,7 +56,6 @@ def test_generator(obs, expectedTrace, expectedPosterior, method="posterior"):
         self.assertAlmostEqual(posterior, expectedPosterior, 6)
     return test
 
-
 def generateTest(content, method):
     for i in range(len(content)):
         l = content[i]
@@ -83,4 +83,5 @@ if __name__ == '__main__':
         content = f.readlines()
     content = [x.strip() for x in content]
     generateTest(content, 'viterbi')
+    generateTest(content, 'viterbiHat')
     unittest.main()
