@@ -37,13 +37,15 @@ class HmmSequenceAnalyzer(object):
     
     __slots__ = ['Hmm','sequence', 'omega', 'alpha','beta','c','viterbiTrace']
     
-    def __init__(self, Hmm, observedSequence):
+    def __init__(self, Hmm, observedSequence, logVersion = False):
         self.Hmm = Hmm
         self.sequence = observedSequence
-        self.forward()
-        self.backward()
-        #self.logForward()
-        #self.logBackward()
+        if( logVersion ):
+            self.logForward()
+            self.logBackward()
+        else:
+            self.forward()
+            self.backward()
     
     def logLikelihood(self, hiddenSequence):
         hidden_index = [ self.Hmm.hidden.index(h) for h in hiddenSequence ]
@@ -72,14 +74,14 @@ class HmmSequenceAnalyzer(object):
         
         # initialize alpha and omega
         self.alpha = [[ delta[k]/self.c[n] if n==0 else 0.0 for n in range(N) ] for k in range(K) ]
-        self.omega = [[ log(delta[k]) if n==0 else -float("Inf") for n in range(N) ] for k  in range(K) ]
+        self.omega = [[ log(delta[k]) if n==0 else float("-inf") for n in range(N) ] for k  in range(K) ]
         
         # calculate subsequent steps
         for n in range(1,N):
             emissionIDX = self.Hmm.observables.index(self.sequence[n])
             delta = [ 0.0 for k in range(K) ]
             for k in range(K):
-                ompri = [ -float("Inf") for kk in range(K) ]
+                ompri = [ float("-inf") for kk in range(K) ]
                 for kk in range(K):
                     delta[k] += self.alpha[kk][n-1] * self.Hmm.A[kk][k]
                     if ( abs(self.Hmm.A[kk][k]) > 1e-13):
@@ -123,8 +125,8 @@ class HmmSequenceAnalyzer(object):
             for k in range(K):
                 for kk in range(K):
                     self.beta[k][n] += (self.beta[kk][n+1]/self.c[n+1]) * self.Hmm.A[k][kk] * self.Hmm.emissions[kk][emissionIDX]
-                if( self.Hmm.emissions[kprev][emissionIDX] > 1e-13 and  self.Hmm.A[kprev][k] > 1e-13 ):
-                    ompri[k] = self.omega[k][n] + log(self.Hmm.A[kprev][k]) + log(self.Hmm.emissions[kprev][emissionIDX]) 
+                if( self.Hmm.emissions[kprev][emissionIDX] > 1e-13 and  self.Hmm.A[k][kprev] > 1e-13 ):
+                    ompri[k] = self.omega[k][n] + log(self.Hmm.A[k][kprev]) + log(self.Hmm.emissions[kprev][emissionIDX]) 
             self.viterbiTrace[n] = np.argmax(ompri)
                 
     def logBackward(self):
