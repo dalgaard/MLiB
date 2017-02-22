@@ -86,7 +86,6 @@ class ViterbiSequenceAnalyzer(HmmSequenceAnalyzer):
         # calculate subsequent steps
         for n in range(1,N):
             emissionIDX = self.Hmm.observables.index(self.sequence[n])
-            delta = [ 0.0 for k in range(K) ]
             for k in range(K):
                 ompri = [ float("-inf") for kk in range(K) ]
                 for kk in range(K):
@@ -203,6 +202,7 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
             emissionIDX = self.Hmm.observables.index(self.sequence[n+1])
             for k in range(K):
                 for kk in range(K):
+                    # here we could have pulled the scaling out, for simpler code structure it is kept here
                     self.beta[k][n] += (self.beta[kk][n+1]/self.c[n+1]) * self.Hmm.A[k][kk] * self.Hmm.emissions[kk][emissionIDX]
                
         
@@ -213,10 +213,6 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
         return trace
     
     def getPosterior(self,k,n):
-        if len(self.alpha) == 0 :
-            self.Hmm.forward()
-        if len(self.beta) == 0 :
-            self.Hmm.backward()
         return self.alpha[k][n] * self.beta[k][n]
     
     def getArgMaxPosterior(self,n):
@@ -305,9 +301,6 @@ class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
         return trace
     
     def getArgMaxPosterior(self,n):
-        return np.argmax([self.getPosterior(k,n) for k in range(self.Hmm.K)])
-    
-    def getArgMaxLogPosterior(self,n):
         N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
         
         # alpha starting indices
