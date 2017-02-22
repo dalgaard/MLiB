@@ -61,6 +61,14 @@ class HmmSequenceAnalyzer(object):
                 ll += log(self.Hmm.A[hidden_index[i-1]][hidden_index[i]])
             ll += log(self.Hmm.emissions[hidden_index[i]][observed_index[i]])
         return ll
+    
+    def getConstants(self):
+        # constants
+        N = len(self.sequence)
+        K = self.Hmm.K
+        B = math.floor(N**(0.5)) 
+        S = math.ceil(N/B)
+        return N,K,B,S
         
     def forward(self):
         N = len(self.sequence)
@@ -93,26 +101,26 @@ class HmmSequenceAnalyzer(object):
                 self.alpha[k][n] = delta[k] / self.c[n]
     
     def logForward(self):
-        N = len(self.sequence)
-        K = self.Hmm.K
-        sqrtN = math.floor(N**(0.5)) 
-        slots = math.ceil(N/sqrtN)
-        delta = [ self.Hmm.pi[k] * self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])] for k in range(K)]
+        # constants
+        N,K,B,S = self.getConstants()
         
-        # initialize alpha and omega
-        self.alpha = [[ log(delta[k]) if n==0 else float("-inf") for n in range(slots) ] for k in range(K) ]
-        self.loopForward([log(d) for d in delta],1,N-1,True)
+        delta = [ log(self.Hmm.pi[k]) + log(self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])]) for k in range(K)]
         
+        # initialize alpha and run the forward algorithm with checkpointing
+        self.alpha = [[ delta[k] if n==0 else float("-inf") for n in range(S) ] for k in range(K) ]
+        self.loopForward(delta,0,N-1,True)
+        
+    # start and end inclusive, start is the idx of the firstCol and end is the index of the column to be returned
     def loopForward(self, firstCol ,start,end,fillAlpha):
-        N = len(self.sequence)
-        K = self.Hmm.K
-        sqrtN = math.floor(N**(0.5)) 
-        slots = math.ceil(N/sqrtN)
+        # constants
+        N,K,B,S = self.getConstants()
+        
+        #initialize work matrix
         work=[[ firstCol[k] if n==0 else float("-inf") for n in range(2) ] for k in range(K) ]
         
         # calculate subsequent steps
         nidx = 0
-        for n in range(start,end+1):
+        for n in range(start+1,end+1):
             nidx+=1
             emissionIDX = self.Hmm.observables.index(self.sequence[n])
             for k in range(K):
@@ -120,14 +128,14 @@ class HmmSequenceAnalyzer(object):
                 for kk in range(K):
                     ls = logsum(ls, work[kk][(nidx-1)%2] + log(self.Hmm.A[kk][k]))
                 work[k][nidx%2] = ls+log(self.Hmm.emissions[k][emissionIDX])
-                if(n%sqrtN==0 and fillAlpha):
-                    print(n,N,sqrtN,n//sqrtN,N//sqrtN,slots,N)
-                    self.alpha[k][n//sqrtN] = work[k][nidx%2]
+                if(n%B==0 and fillAlpha):
+                    self.alpha[k][n//B] = work[k][nidx%2]
+                    
         return [work[k][nidx%2] for k in range(K)]
     
     def backward(self):
-        N = len(self.sequence)
-        K = self.Hmm.K
+        # constants
+        N,K,B,S = self.getConstants()
         
         # initialize
         self.beta = [[ 1.0 if n==N-1 else 0.0 for n in range(N) ] for k in range(K) ]
@@ -146,32 +154,46 @@ class HmmSequenceAnalyzer(object):
             self.viterbiTrace[n] = np.argmax(ompri)
                
     def logBackward(self):
-        N = len(self.sequence)
-        K = self.Hmm.K
-        sqrtN = math.floor(N**(0.5)) 
-        slots = math.ceil(N/sqrtN)
-        # initialize
-        self.beta = [[ 0.0 if n==N-1 else float("-inf") for n in range(slots) ] for k in range(K) ]
-        self.loopBackward([0.0 for k in range(K)],N-2,0,True)
+        # constants
+        N,K,B,S = self.getConstants()
         
+        # initialize
+        self.beta = [[ 0.0 if n==N-1 else float("-inf") for n in range(S) ] for k in range(K) ]
+        self.loopBackward([0.0 for k in range(K)],N-1,0,True)
+        
+    # start and end inclusive, start is the idx of the firstCol and end is the index of the column to be returned
     def loopBackward(self,firstCol,start,end,fillBeta):
-        N = len(self.sequence)
-        K = self.Hmm.K
-        sqrtN = math.floor(N**(0.5)) 
-        slots = math.ceil(N/sqrtN)
+        # constants
+        N,K,B,S = self.getConstants()
+        
+        # initialize the work matrix
         work=[[firstCol[k] if n==0 else float("-inf") for n in range(2) ] for k in range(K) ]
+        
+        # store the fist (last) column in the beta matrix
+        if fillBeta :
+            for k in range(K):
+                self.beta[k][S-1] = firstCol[k]
+                
         # calculate subsequent steps
         nidx = 0
-        for n in range(start,end-1,-1):
+        for n in range(start-1,end-1,-1):
             nidx += 1
             emissionIDX = self.Hmm.observables.index(self.sequence[n+1])
             for k in range(K):
                 for kk in range(K):
                     work[k][nidx%2] = logsum(work[k][nidx%2],work[kk][(nidx+1)%2] + log(self.Hmm.A[k][kk]) + log(self.Hmm.emissions[kk][emissionIDX]))
-            if((N-1-n)%sqrtN==0 and fillBeta):
+                    
+            # reinit work for next round
+            for k in range(K):
+                work[k][(nidx+1)%2] = float("-inf")
+            
+            # checkpoint the beta matrix
+            if((N-1-n)%B==0 and fillBeta):
                 for k in range(K):
-                    self.beta[k][n//sqrtN] = work[k][nidx%2]
+                    self.beta[k][n//B] = work[k][nidx%2]
+                    
         return [work[k][nidx%2] for k in range(K)]
+    
         
     def getTrace(self,choice="viterbi"):
         trace = ""
@@ -199,19 +221,19 @@ class HmmSequenceAnalyzer(object):
     def getArgMaxPosterior(self,n):
         return np.argmax([self.getPosterior(k,n) for k in range(self.Hmm.K)])
     
-    def getArgMaxLogPosterior(self,requestedN):
-        K = self.Hmm.K
-        N = len(self.sequence)
-        sqrtN = math.floor(N**(0.5)) 
-        slots = math.ceil(N/sqrtN)
-        # get the right alpha
-        nidx = requestedN//sqrtN
-        startIdx = nidx*sqrtN
-        a = self.loopForward([self.alpha[k][nidx] for k in range(K)] ,startIdx+1,requestedN,False)
+    def getArgMaxLogPosterior(self,n):
+        # constants
+        N,K,B,S = self.getConstants()
         
-        # beta starting index
-        nidx = math.floor((N-1-requestedN)/sqrtN)
-        startIdx = nidx*sqrtN
-        print(requestedN,nidx,startIdx,N,sqrtN)
-        b = self.loopBackward([self.beta[k][nidx] for k in range(K)], min(startIdx-1,N-1), requestedN,False)
+        # alpha starting indices
+        sA = n//B
+        IA = sA*B
+        a = self.loopForward([self.alpha[k][sA] for k in range(K)],IA,n,False)
+        
+        # beta starting indices
+        sP = (N-1-n)//B
+        sB = S-1-sP
+        IB = N-1-sP*B
+        b = self.loopBackward([self.beta[k][sB] for k in range(K)],IB,n,False)
+        
         return np.argmax([ a[k] + b[k] for k in range(self.Hmm.K)])
