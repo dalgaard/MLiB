@@ -37,7 +37,7 @@ class HmmSequenceAnalyzer(object):
     
     __slots__ = ['Hmm','sequence']
     
-    def __init__(self, Hmm, observedSequence, logVersion = False):
+    def __init__(self, Hmm, observedSequence):
         self.Hmm = Hmm
         self.sequence = observedSequence
     
@@ -157,6 +157,9 @@ class ViterbiHatSequenceAnalyzer(HmmSequenceAnalyzer):
     def getTrace(self):
         return self.viterbiHatTrace()
 
+    def getPosterior(self):
+        lastCol = [ self.omegaHat[k][len(self.omegaHat[0]) -1] for k in range(len(self.omegaHat)) ]
+        return max(lastCol)
 
 class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
     

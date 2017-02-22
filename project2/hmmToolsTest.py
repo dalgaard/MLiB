@@ -1,6 +1,7 @@
 import unittest
 from hmmTools import Hmm, HmmSequenceAnalyzer
 from math import log
+from hmmTools import ScaledPosteriorSequenceAnalyzer, ViterbiHatSequenceAnalyzer, ViterbiSequenceAnalyzer
 
 expectedHidden = [0.496359, 0.188095, 0.315546]
 expectedTransitions = \
@@ -49,8 +50,15 @@ class HmmLoaderTestCase(unittest.TestCase):
 
 def test_generator(obs, expectedTrace, expectedPosterior, method="posterior"):
     def test(self):
-        sa = HmmSequenceAnalyzer(self.hmm, obs)
-        trace = sa.getTrace(method)
+        if method == "posterior":
+            sa = ScaledPosteriorSequenceAnalyzer(self.hmm, obs)
+        elif method == "viterbiHat":
+            sa = ViterbiHatSequenceAnalyzer(self.hmm, obs)
+        elif method == "viterbi":
+            sa = ViterbiSequenceAnalyzer(self.hmm, obs)
+        else:
+            sa = None
+        trace = sa.getTrace()
         posterior = sa.logLikelihood(trace)
         self.assertEqual(trace, expectedTrace)
         self.assertAlmostEqual(posterior, expectedPosterior, 6)
