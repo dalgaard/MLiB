@@ -159,7 +159,7 @@ class HmmSequenceAnalyzer(object):
         N,K,B,S = self.getConstants()
         
         # initialize
-        self.beta = [[ 0.0 if n==N-1 else float("-inf") for n in range(S) ] for k in range(K) ]
+        self.beta = [[ 0.0 if n==S-1 else float("-inf") for n in range(S) ] for k in range(K) ]
         self.loopBackward([0.0 for k in range(K)],N-1,0,True)
         
     # start and end inclusive, start is the idx of the firstCol and end is the index of the column to be returned
@@ -170,11 +170,6 @@ class HmmSequenceAnalyzer(object):
         # initialize the work matrix
         work=[[firstCol[k] if n==0 else float("-inf") for n in range(2) ] for k in range(K) ]
         
-        # store the fist (last) column in the beta matrix
-        if fillBeta :
-            for k in range(K):
-                self.beta[k][S-1] = firstCol[k]
-                
         # calculate subsequent steps
         nidx = 0
         for n in range(start-1,end-1,-1):
