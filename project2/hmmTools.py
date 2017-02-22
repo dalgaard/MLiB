@@ -90,8 +90,7 @@ class ViterbiSequenceAnalyzer(HmmSequenceAnalyzer):
             for k in range(K):
                 ompri = [ float("-inf") for kk in range(K) ]
                 for kk in range(K):
-                    if ( abs(self.Hmm.A[kk][k]) > 1e-13):
-                        ompri[kk] = self.omega[kk][n-1] + log(self.Hmm.A[kk][k])
+                    ompri[kk] = self.omega[kk][n-1] + log(self.Hmm.A[kk][k])
                 self.omega[k][n] = log(self.Hmm.emissions[k][emissionIDX]) + max(ompri)
     
     
@@ -107,8 +106,7 @@ class ViterbiSequenceAnalyzer(HmmSequenceAnalyzer):
             emissionIDX = self.Hmm.observables.index(self.sequence[n+1])
             ompri = [ -float("Inf") for k in range(K) ]
             for k in range(K):
-                if( self.Hmm.emissions[kprev][emissionIDX] > 1e-13 and  self.Hmm.A[k][kprev] > 1e-13 ):
-                    ompri[k] = self.omega[k][n] + log(self.Hmm.A[k][kprev]) + log(self.Hmm.emissions[kprev][emissionIDX]) 
+                ompri[k] = self.omega[k][n] + log(self.Hmm.A[k][kprev]) + log(self.Hmm.emissions[kprev][emissionIDX]) 
             self.viterbiTrace[n] = np.argmax(ompri)
         
     def getTrace(self):
@@ -227,14 +225,14 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
 
 class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
     
-    __slots__ = ['alpha','beta','c']
+    __slots__ = ['alpha','beta']
     
     def __init__(self, Hmm, observedSequence, logVersion = False):
         HmmSequenceAnalyzer.__init__(self,Hmm,observedSequence)
-        self.logForward()
-        self.logBackward()
+        self.forward()
+        self.backward()
     
-    def logForward(self):
+    def forward(self):
         N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
         
         delta = [ log(self.Hmm.pi[k]) + log(self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])]) for k in range(K)]
@@ -265,7 +263,7 @@ class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
                     
         return [work[k][nidx%2] for k in range(K)]
     
-    def logBackward(self):
+    def backward(self):
         N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
         
         # initialize
