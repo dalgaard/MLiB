@@ -1,0 +1,32 @@
+\documentclass[11pt]{article}
+
+\usepackage{hyperref}
+\title{Report on Project 2}
+\author{Patrick Ettenhuber and Jens Nielsen, Group OldiesButGoldies}
+
+\begin{document}
+\maketitle
+
+\section*{Status of project}
+
+\begin{enumerate}
+\item We have implemented both the Viterbi algorithm and the
+  forward\--backward algorithm with success.
+\item We use log space in the Viterbi algorithm and scaling in the
+  forward\--backward algorithm to avoid underflow problems.
+\item In addition we have played with the limited memory approach and
+  only saving $\sqrt{N}$ columns in memory for both viterbi and
+  forward\--backward and reconstructing blocks as needed.
+\end{enumerate}
+
+\section*{Validation of program}
+
+We have used the provided test data to
+validate our implementation, and all numbers and sequences computed by
+our program agree with the provided test output files.
+
+\section*{Source code}
+
+Source code is available at github : \url{https://github.com/dalgaard/MLiB/tree/master/project2}
+
+\end{document}

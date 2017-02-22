@@ -35,7 +35,7 @@ class Hmm(object):
     
 class HmmSequenceAnalyzer(object):
     
-    __slots__ = ['Hmm','sequence', 'omega', 'alpha','beta','c','viterbiTrace']
+    __slots__ = ['Hmm','sequence', 'omega', 'alpha','beta','c','viterbiTrace', 'omegaHat']
     
     def __init__(self, Hmm, observedSequence, logVersion = False):
         self.Hmm = Hmm
@@ -46,6 +46,7 @@ class HmmSequenceAnalyzer(object):
         else:
             self.forward()
             self.backward()
+        self.viterbiHat()
     
     def logLikelihood(self, hiddenSequence):
         hidden_index = [ self.Hmm.hidden.index(h) for h in hiddenSequence ]
@@ -206,6 +207,8 @@ class HmmSequenceAnalyzer(object):
         elif choice == "logPosterior":
             for n in range(len(self.sequence)):
                 trace += self.Hmm.hidden[self.getArgMaxLogPosterior(n)]
+        elif choice == "viterbiHat":
+            trace = self.viterbiHatTrace()
         else:
             print("unrecognized option: "+choice)
             exit()
@@ -237,3 +240,34 @@ class HmmSequenceAnalyzer(object):
         b = self.loopBackward([self.beta[k][sB] for k in range(K)],IB,n,False)
         
         return np.argmax([ a[k] + b[k] for k in range(self.Hmm.K)])
+
+    def viterbiHat(self):
+        x = self.sequence
+        obs = self.Hmm.observables
+        emis = np.log(self.Hmm.emissions)
+        pi = np.log(self.Hmm.pi)
+        A = np.log(self.Hmm.A)
+        xIdx = [ obs.index(y) for y in x ]
+        omegaHat = [ [pi[k] + emis[k][xIdx[0]] if n == 0 else -float('Inf') for n in range(len(x))] for k in range(len(pi)) ]
+        for n in range(1, len(x)):
+            for k in range(len(pi)):
+                tmp = [ emis[k][xIdx[n]] + omegaHat[j][n-1] + A[j][k] for j in range(len(pi)) ]
+                omegaHat[k][n] = np.max(tmp)
+        self.omegaHat = omegaHat
+
+    def viterbiHatTrace(self):
+        x = self.sequence
+        hid = self.Hmm.hidden
+        emis = np.log(self.Hmm.emissions)
+        pi = np.log(self.Hmm.pi)
+        A = np.log(self.Hmm.A)
+        xIdx = [ self.Hmm.observables.index(y) for y in x ]
+        maxOmegaN = np.argmax([self.omegaHat[k][len(x) - 1] for k in range(len(hid))])
+        zIdx = [ maxOmegaN if i == len(x) - 1 else -1 for i in range(len(x))]
+        for n in reversed(range(len(x) - 1)):
+            z1 = zIdx[n+1]
+            x1 = xIdx[n+1]
+            emis1 = emis[z1][x1]
+            tmp = [ emis1 + self.omegaHat[k][n] + A[k][z1] for k in range(len(hid)) ]
+            zIdx[n] = np.argmax(tmp)
+        return ''.join([ hid[z] for z in zIdx ])
