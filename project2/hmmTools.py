@@ -300,7 +300,7 @@ class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
     def getTrace(self):
         trace = ""
         for n in range(len(self.sequence)):
-            trace += self.Hmm.hidden[self.getArgMaxLogPosterior(n)]
+            trace += self.Hmm.hidden[self.getArgMaxPosterior(n)]
         return trace
     
     def getArgMaxPosterior(self,n):
