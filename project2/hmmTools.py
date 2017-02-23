@@ -81,23 +81,25 @@ class ViterbiSequenceAnalyzer(HmmSequenceAnalyzer):
         N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
 
         # initialize alpha and omega
-        self.omega = [[ log(self.Hmm.pi[k])+log(self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])]) if n==0 else float("-inf") for n in range(N) ] for k  in range(K) ]
+        self.omega = [[ log(self.Hmm.pi[k])+log(self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])]) if n==0 else float("-inf") for k  in range(K)] for n in range(N)]
         
         # calculate subsequent steps
         for n in range(1,N):
             emissionIDX = self.Hmm.observables.index(self.sequence[n])
             for k in range(K):
-                ompri = [ float("-inf") for kk in range(K) ]
+                T = float("-inf")
                 for kk in range(K):
-                    ompri[kk] = self.omega[kk][n-1] + log(self.Hmm.A[kk][k])
-                self.omega[k][n] = log(self.Hmm.emissions[k][emissionIDX]) + max(ompri)
+                    t = self.omega[n-1][kk] + log(self.Hmm.A[kk][k])
+                    if t>T:
+                        T=t
+                self.omega[n][k] = log(self.Hmm.emissions[k][emissionIDX]) + T
     
     
     def backward(self):
         N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
         
         # initialize
-        self.viterbiTrace = [ np.argmax([self.omega[k][n] for k in range(K)]) if n==N-1 else -1 for n in range(N) ]
+        self.viterbiTrace = [ np.argmax(self.omega[n]) if n==N-1 else -1 for n in range(N) ]
         
         # calculate subsequent steps
         for n in range(N-2,-1,-1):
@@ -105,7 +107,7 @@ class ViterbiSequenceAnalyzer(HmmSequenceAnalyzer):
             emissionIDX = self.Hmm.observables.index(self.sequence[n+1])
             ompri = [ -float("Inf") for k in range(K) ]
             for k in range(K):
-                ompri[k] = self.omega[k][n] + log(self.Hmm.A[k][kprev]) + log(self.Hmm.emissions[kprev][emissionIDX]) 
+                ompri[k] = self.omega[n][k] + log(self.Hmm.A[k][kprev]) + log(self.Hmm.emissions[kprev][emissionIDX]) 
             self.viterbiTrace[n] = np.argmax(ompri)
         
     def getTrace(self):
@@ -224,10 +226,11 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
 
 class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
     
-    __slots__ = ['alpha','beta']
+    __slots__ = ['alpha','beta','work']
     
     def __init__(self, Hmm, observedSequence, logVersion = False):
         HmmSequenceAnalyzer.__init__(self,Hmm,observedSequence)
+        self.work=[[float("-inf")  for k in range(Hmm.K)] for n in range(2)]
         self.forward()
         self.backward()
     
@@ -237,7 +240,7 @@ class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
         delta = [ log(self.Hmm.pi[k]) + log(self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])]) for k in range(K)]
         
         # initialize alpha and run the forward algorithm with checkpointing
-        self.alpha = [[ delta[k] if n==0 else float("-inf") for n in range(S) ] for k in range(K) ]
+        self.alpha = [[ delta[k] if n==0 else float("-inf")  for k in range(K)] for n in range(S) ]
         self.loopForward(delta,0,N-1,True)
         
     # start and end inclusive, start is the idx of the firstCol and end is the index of the column to be returned
@@ -245,7 +248,8 @@ class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
         N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
         
         #initialize work matrix
-        work=[[ firstCol[k] if n==0 else float("-inf") for n in range(2) ] for k in range(K) ]
+        for k in range(K):
+            self.work[0][k] = firstCol[k]
         
         # calculate subsequent steps
         nidx = 0
@@ -255,26 +259,29 @@ class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
             for k in range(K):
                 ls = float("-inf")
                 for kk in range(K):
-                    ls = logsum(ls, work[kk][(nidx-1)%2] + log(self.Hmm.A[kk][k]))
-                work[k][nidx%2] = ls+log(self.Hmm.emissions[k][emissionIDX])
+                    ls = logsum(ls, self.work[(nidx-1)%2][kk] + log(self.Hmm.A[kk][k]))
+                self.work[nidx%2][k] = ls+log(self.Hmm.emissions[k][emissionIDX])
                 if(n%B==0 and fillAlpha):
-                    self.alpha[k][n//B] = work[k][nidx%2]
+                    for k in range(K):
+                        self.alpha[n//B][k] = self.work[nidx%2][k]
                     
-        return [work[k][nidx%2] for k in range(K)]
+        return [self.work[nidx%2][k] for k in range(K)]
     
     def backward(self):
         N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
         
         # initialize
-        self.beta = [[ 0.0 if n==S-1 else float("-inf") for n in range(S) ] for k in range(K) ]
+        self.beta = [[ 0.0 if n==S-1 else float("-inf") for k in range(K) ] for n in range(S) ]
         self.loopBackward([0.0 for k in range(K)],N-1,0,True)
         
     # start and end inclusive, start is the idx of the firstCol and end is the index of the column to be returned
     def loopBackward(self,firstCol,start,end,fillBeta):
         N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
         
-        # initialize the work matrix
-        work=[[firstCol[k] if n==0 else float("-inf") for n in range(2) ] for k in range(K) ]
+        #initialize work matrix
+        for k in range(K):
+            self.work[0][k] = firstCol[k]
+            self.work[1][k] = float("-inf")
         
         # calculate subsequent steps
         nidx = 0
@@ -283,18 +290,18 @@ class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
             emissionIDX = self.Hmm.observables.index(self.sequence[n+1])
             for k in range(K):
                 for kk in range(K):
-                    work[k][nidx%2] = logsum(work[k][nidx%2],work[kk][(nidx+1)%2] + log(self.Hmm.A[k][kk]) + log(self.Hmm.emissions[kk][emissionIDX]))
+                    self.work[nidx%2][k] = logsum(self.work[nidx%2][k],self.work[(nidx+1)%2][kk] + log(self.Hmm.A[k][kk]) + log(self.Hmm.emissions[kk][emissionIDX]))
                     
             # reinit work for next round
             for k in range(K):
-                work[k][(nidx+1)%2] = float("-inf")
+                self.work[(nidx+1)%2][k] = float("-inf")
             
             # checkpoint the beta matrix
             if((N-1-n)%B==0 and fillBeta):
                 for k in range(K):
-                    self.beta[k][n//B] = work[k][nidx%2]
+                    self.beta[n//B][k] = self.work[nidx%2][k]
                     
-        return [work[k][nidx%2] for k in range(K)]
+        return [self.work[nidx%2][k] for k in range(K) ]
     
         
     def getTrace(self):
@@ -309,12 +316,12 @@ class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
         # alpha starting indices
         sA = n//B
         IA = sA*B
-        a = self.loopForward([self.alpha[k][sA] for k in range(K)],IA,n,False)
+        a = self.loopForward([self.alpha[sA][k] for k in range(K)],IA,n,False)
         
         # beta starting indices
         sP = (N-1-n)//B
         sB = S-1-sP
         IB = N-1-sP*B
-        b = self.loopBackward([self.beta[k][sB] for k in range(K)],IB,n,False)
+        b = self.loopBackward([self.beta[sB][k] for k in range(K)],IB,n,False)
         
         return np.argmax([ a[k] + b[k] for k in range(self.Hmm.K)])
