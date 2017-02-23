@@ -12,8 +12,8 @@
 \begin{enumerate}
 \item We have implemented both the Viterbi algorithm and the
   forward\--backward algorithm with success.
-\item In order to avoid underflow problems we use the log transformation for 
-	the Viterbi algorithm and we have implemented both scaling  and a log 
+\item In order to avoid underflow problems we use the log transformation for
+	the Viterbi algorithm and we have implemented both scaling  and a log
 	transformation for the forward\--backward algorithm.
 \item In addition we have implemented the limited memory approach and
   only saving $\sqrt{N}$ columns in memory for both viterbi and
@@ -25,6 +25,10 @@
 We have used the provided test data to
 validate our implementation, and all numbers and sequences computed by
 our program agree with the provided test output files.
+
+In addition, for posterior decoding we implemented both scaled and
+log-sum approach to mitigate underflow and verified that the results
+did agree with one another on the real data.
 
 \section*{Source code}
 

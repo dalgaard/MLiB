@@ -115,7 +115,11 @@ class ViterbiSequenceAnalyzer(HmmSequenceAnalyzer):
         for n in range(len(self.sequence)):
             trace += self.Hmm.hidden[self.viterbiTrace[n]]
         return trace
-    
+
+    def getPosterior(self):
+        lastCol = [ self.omega[len(self.omega[0]) -1][k] for k in range(len(self.omega[0])) ]
+        return log(max(lastCol))
+
 
 class ViterbiHatSequenceAnalyzer(HmmSequenceAnalyzer):
     
