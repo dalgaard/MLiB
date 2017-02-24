@@ -29,9 +29,9 @@ with open('test-sequences-project2.txt','r') as f:
             t1 = time.process_time()
             post.write(getAnalysis(post,ScaledPosteriorSequenceAnalyzer(h,lines[iline+1].strip())))
             t2 = time.process_time()
-            viterbi.write(getAnalysis(post,ViterbiSequenceAnalyzer(h,lines[iline+1].strip())))
+            viterbi.write(getAnalysis(post,ViterbiSequenceAnalyzer(h,lines[iline+1].strip(),len(lines[iline+1].strip()))))
             t3 = time.process_time()
-            logPost.write(getAnalysis(logPost,LogSumSequenceAnalyzer(h,lines[iline+1].strip())))
+            logPost.write(getAnalysis(logPost,LogSumSequenceAnalyzer(h,lines[iline+1].strip(),len(lines[iline+1].strip()))))
             t4 = time.process_time()
             sP += t2-t1
             vT += t3-t2

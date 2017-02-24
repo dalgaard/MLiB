@@ -35,11 +35,17 @@ class Hmm(object):
     
 class HmmSequenceAnalyzer(object):
     
-    __slots__ = ['Hmm','sequence']
+    __slots__ = ['Hmm','sequence','B']
     
-    def __init__(self, Hmm, observedSequence):
+    def __init__(self, Hmm, observedSequence,setB=0):
         self.Hmm = Hmm
         self.sequence = observedSequence
+        
+        # choose default B as the square root of the number of 
+        if( setB > 0 ):
+            self.B = setB
+        else:
+            self.B = math.floor(len(self.sequence)**(0.5)) 
     
     def logLikelihood(self, hiddenSequence):
         hidden_index = [ self.Hmm.hidden.index(h) for h in hiddenSequence ]
@@ -60,7 +66,7 @@ class HmmSequenceAnalyzer(object):
         # constants for bookkeeping
         N = len(self.sequence)
         K = self.Hmm.K
-        B = math.floor(N**(0.5)) 
+        B = self.B
         S = math.ceil(N/B)
         return N,K,B,S
         
@@ -70,45 +76,60 @@ class HmmSequenceAnalyzer(object):
 
 class ViterbiSequenceAnalyzer(HmmSequenceAnalyzer):
     
-    __slots__ = ['omega','viterbiTrace']
+    __slots__ = ['omega','viterbiTrace','work']
     
-    def __init__(self, Hmm, observedSequence):
-        HmmSequenceAnalyzer.__init__(self,Hmm,observedSequence)
+    def __init__(self, Hmm, observedSequence, setB=0):
+        HmmSequenceAnalyzer.__init__(self,Hmm,observedSequence,setB=setB)
+        self.work=[[float("-inf") for k in range(Hmm.K)] for n in range(2)]
         self.forward()
-        self.backward()
     
     def forward(self):
         N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
+        delta = [ log(self.Hmm.pi[k]) + log(self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])]) for k in range(K)]
 
-        # initialize alpha and omega
-        self.omega = [[ log(self.Hmm.pi[k])+log(self.Hmm.emissions[k][self.Hmm.observables.index(self.sequence[0])]) if n==0 else float("-inf") for k  in range(K)] for n in range(N)]
-        
-        # calculate subsequent steps
-        for n in range(1,N):
-            emissionIDX = self.Hmm.observables.index(self.sequence[n])
-            for k in range(K):
-                T = float("-inf")
-                for kk in range(K):
-                    t = self.omega[n-1][kk] + log(self.Hmm.A[kk][k])
-                    if t>T:
-                        T=t
-                self.omega[n][k] = log(self.Hmm.emissions[k][emissionIDX]) + T
-    
-    
-    def backward(self):
-        N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
+        # initialize omega and do the forward sweep storing a bunch of columns
+        self.omega = [[ delta[k] if n==0 else float("-inf") for k  in range(K)] for n in range(S)]
+        lastCol = self.loopForward(delta,0,N-1,True)
         
         # initialize
-        self.viterbiTrace = [ np.argmax(self.omega[n]) if n==N-1 else -1 for n in range(N) ]
+        self.viterbiTrace = [ np.argmax(lastCol) if n==N-1 else -1 for n in range(N) ]
         
         # calculate subsequent steps
         for n in range(N-2,-1,-1):
             kprev = self.viterbiTrace[n+1]
             emissionIDX = self.Hmm.observables.index(self.sequence[n+1])
             ompri = [ -float("Inf") for k in range(K) ]
+            sO = n//B
+            IO = sO*B
+            omega = self.loopForward(self.omega[sO],IO,n,False)
             for k in range(K):
-                ompri[k] = self.omega[n][k] + log(self.Hmm.A[k][kprev]) + log(self.Hmm.emissions[kprev][emissionIDX]) 
+                ompri[k] = omega[k] + log(self.Hmm.A[k][kprev]) + log(self.Hmm.emissions[kprev][emissionIDX]) 
             self.viterbiTrace[n] = np.argmax(ompri)
+
+    # start and end inclusive, start is the idx of the firstCol and end is the index of the column to be returned
+    def loopForward(self, firstCol ,start,end,fillOmega):
+        N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
+        
+        #initialize work
+        for k in range(K):
+            self.work[0][k]=firstCol[k]
+        
+        # calculate subsequent steps
+        nidx = 0
+        for n in range(start+1,end+1):
+            nidx+=1
+            emissionIDX = self.Hmm.observables.index(self.sequence[n])
+            for k in range(K):
+                T = float("-inf")
+                for kk in range(K):
+                    t = self.work[(nidx-1)%2][kk] + log(self.Hmm.A[kk][k])
+                    if t>T:
+                        T=t
+                self.work[nidx%2][k] = log(self.Hmm.emissions[k][emissionIDX]) + T
+                if(n%B==0 and fillOmega):
+                    self.omega[n//B][k] = self.work[nidx%2][k]
+                    
+        return [self.work[nidx%2][k] for k in range(K)]
         
     def getTrace(self):
         trace = ""
@@ -125,7 +146,7 @@ class ViterbiHatSequenceAnalyzer(HmmSequenceAnalyzer):
     
     __slots__ = ['omegaHat']
     
-    def __init__(self, Hmm, observedSequence, logVersion = False):
+    def __init__(self, Hmm, observedSequence):
         HmmSequenceAnalyzer.__init__(self,Hmm,observedSequence)
         self.viterbiHat()
 
@@ -171,8 +192,8 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
     
     __slots__ = ['alpha','beta','c']
     
-    def __init__(self, Hmm, observedSequence):
-        HmmSequenceAnalyzer.__init__(self,Hmm,observedSequence)
+    def __init__(self, Hmm, observedSequence, setB=0):
+        HmmSequenceAnalyzer.__init__(self,Hmm,observedSequence,setB=setB)
         self.forward()
         self.backward()
         
@@ -232,8 +253,8 @@ class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
     
     __slots__ = ['alpha','beta','work']
     
-    def __init__(self, Hmm, observedSequence, logVersion = False):
-        HmmSequenceAnalyzer.__init__(self,Hmm,observedSequence)
+    def __init__(self, Hmm, observedSequence, setB=0):
+        HmmSequenceAnalyzer.__init__(self,Hmm,observedSequence, setB=setB)
         self.work=[[float("-inf")  for k in range(Hmm.K)] for n in range(2)]
         self.forward()
         self.backward()
@@ -320,6 +341,7 @@ class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
         # alpha starting indices
         sA = n//B
         IA = sA*B
+        #print(sA,IA,len(self.alpha),S,B,self.B,N,math.ceil(N/B))
         a = self.loopForward([self.alpha[sA][k] for k in range(K)],IA,n,False)
         
         # beta starting indices
