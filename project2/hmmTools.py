@@ -76,7 +76,7 @@ class HmmSequenceAnalyzer(object):
 
 class ViterbiSequenceAnalyzer(HmmSequenceAnalyzer):
     
-    __slots__ = ['omega','viterbiTrace','work']
+    __slots__ = ['omega','viterbiTrace','work','lastCol']
     
     def __init__(self, Hmm, observedSequence, setB=0):
         HmmSequenceAnalyzer.__init__(self,Hmm,observedSequence,setB=setB)
@@ -89,10 +89,10 @@ class ViterbiSequenceAnalyzer(HmmSequenceAnalyzer):
 
         # initialize omega and do the forward sweep storing a bunch of columns
         self.omega = [[ delta[k] if n==0 else float("-inf") for k  in range(K)] for n in range(S)]
-        lastCol = self.loopForward(delta,0,N-1,True)
+        self.lastCol = self.loopForward(delta,0,N-1,True)
         
         # initialize
-        self.viterbiTrace = [ np.argmax(lastCol) if n==N-1 else -1 for n in range(N) ]
+        self.viterbiTrace = [ np.argmax(self.lastCol) if n==N-1 else -1 for n in range(N) ]
         
         # calculate subsequent steps
         for n in range(N-2,-1,-1):
@@ -138,8 +138,7 @@ class ViterbiSequenceAnalyzer(HmmSequenceAnalyzer):
         return trace
 
     def getPosterior(self):
-        lastCol = [ self.omega[len(self.omega[0]) -1][k] for k in range(len(self.omega[0])) ]
-        return log(max(lastCol))
+        return max(self.lastCol)
 
 
 class ViterbiHatSequenceAnalyzer(HmmSequenceAnalyzer):
