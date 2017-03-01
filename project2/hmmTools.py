@@ -8,12 +8,11 @@ class Hmm(object):
     def __init__(self,hidden,observables,pi,A,emissions):
         self.hidden = hidden
         self.observables = observables
-        self.A = A
-        self.pi = pi
-        self.emissions = emissions
         
-        self.K = len(self.pi)
-        self.N = len(self.emissions[0])
+        self.K = len(self.hidden)
+        self.N = len(self.observables)
+        
+        self.update(pi,A,emissions)
     
     @classmethod
     def fromFile(hmm,file):
@@ -40,6 +39,17 @@ class Hmm(object):
             else:
                 i += 1
         return(hmm(hidden,observables,pi,A,emissions))
+    
+    def update(self,pi,A,emissions):
+        if( len(pi) != self.K):
+            print("error in update, wrong size of pi")
+        self.pi = pi
+        if( len(A) != self.K or len(A[0])!=self.K):
+            print("error in update, wrong size of A")
+        self.A = A
+        if( len(emissions) != self.K or len(emissions[0])!=self.N):
+            print("error in update, wrong size of emissions")
+        self.emissions = emissions
     
 class HmmSequenceAnalyzer(object):
     
