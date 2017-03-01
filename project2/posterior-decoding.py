@@ -7,7 +7,7 @@ def main(argv):
     if len(argv) != 2:
         print("arguments : <hmm specification file> <observed sequence>\n")
         sys.exit(1)
-    sa = ScaledPosteriorSequenceAnalyzer(Hmm(argv[0]), argv[1])
+    sa = ScaledPosteriorSequenceAnalyzer(Hmm.fromFile(argv[0]), argv[1])
     trace = sa.getTrace()
     ll = sa.logLikelihood(trace)
     print("Trace         : {}".format(trace))

@@ -4,7 +4,7 @@ def getAnalysis(f,sequenceAnalyzer):
     trace=sequenceAnalyzer.getTrace()
     return "# "+trace+"\n; log P(x,z) = "+str(sequenceAnalyzer.logLikelihood(trace))+"\n\n"
             
-h = Hmm('hmm-tm.txt')
+h = Hmm.fromFile('hmm-tm.txt')
 
 post = open("posterior.txt",'w')
 logPost = open("logPost.txt",'w')

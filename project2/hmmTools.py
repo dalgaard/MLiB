@@ -5,33 +5,41 @@ class Hmm(object):
     
     __slots__ = ['hidden', 'observables', 'pi', 'A', 'emissions','K','N']
     
-    def __init__(self, file):
-        self.hidden = []
-        self.observables = []
+    def __init__(self,hidden,observables,pi,A,emissions):
+        self.hidden = hidden
+        self.observables = observables
+        self.A = A
+        self.pi = pi
+        self.emissions = emissions
+        
+        self.K = len(self.pi)
+        self.N = len(self.emissions[0])
+    
+    @classmethod
+    def fromFile(hmm,file):
         with open(file,'r') as f:
             content = f.readlines()
         content = [x.strip() for x in content]
         i=0
         while i < len(content):
             if content[i] == 'hidden':
-                self.hidden = content[i+1].split(' ')
+                hidden = content[i+1].split(' ')
                 i+=2
             elif content[i] == 'observables':
-                self.observables = content[i+1].split(' ')
+                observables = content[i+1].split(' ')
                 i+=2
             elif content[i] == 'pi':
-                self.pi = [ float(x) for x in content[i+1].split(' ')]
+                pi = [ float(x) for x in content[i+1].split(' ')]
                 i+=2
             elif content[i] == 'transitions':
-                self.A = [ [ float(y) for y in x.split(' ')] for x in content[i+1:i+1+len(self.hidden)] ]
-                i += 2+len(self.hidden)
+                A = [ [ float(y) for y in x.split(' ')] for x in content[i+1:i+1+len(hidden)] ]
+                i += 2+len(hidden)
             elif content[i] == 'emissions':
-                self.emissions = [ [ float(y) for y in x.split(' ')] for x in content[i+1:i+1+len(self.hidden)] ]
-                i += 2+len(self.hidden)
+                emissions = [ [ float(y) for y in x.split(' ')] for x in content[i+1:i+1+len(hidden)] ]
+                i += 2+len(hidden)
             else:
                 i += 1
-        self.K = len(self.pi)
-        self.N = len(self.emissions[0])
+        return(hmm(hidden,observables,pi,A,emissions))
     
 class HmmSequenceAnalyzer(object):
     

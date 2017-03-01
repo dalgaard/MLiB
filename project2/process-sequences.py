@@ -71,7 +71,7 @@ def main(argv):
     with open("sequences-project2.txt",'r') as f:
         content = f.readlines()
     content = [x.strip() for x in content if x.strip() != '']
-    hmm = Hmm(argv[0])
+    hmm = Hmm.fromFile(argv[0])
     processviterbi(content, hmm)
 
 if __name__ == "__main__":
