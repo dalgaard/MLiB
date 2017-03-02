@@ -269,6 +269,12 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
         emissionIDX = self.Hmm.observables.index(self.sequence[n])
         return  [[self.alpha[kk][n-1]*self.beta[k][n]*self.Hmm.A[kk][k]*self.Hmm.emissions[k][emissionIDX]/self.c[n] for k in range(self.Hmm.K)] for kk in range(self.Hmm.K)]
     
+    def getLikelihood(self):
+        p = 1.0
+        for c in self.c:
+            p+=log(c)
+        return p
+    
     def getArgMaxPosterior(self,n):
         return np.argmax(self.getGamma(n))
     

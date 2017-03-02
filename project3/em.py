@@ -36,14 +36,13 @@ class HmmTrainer(object):
             ll = 0.0
             for seq in observed:
                 sa = ScaledPosteriorSequenceAnalyzer(self.hmm,seq)
+                ll += sa.getLikelihood()
                 
                 # get pi contribution for current sequence
                 gamma = sa.getGamma(0)
                 for k in range(K):
                     newPi[k] += gamma[k] 
                     newPiDenom += gamma[k]
-                    if( self.hmm.pi[k] > 1e-13):
-                        ll += gamma[k] * log(self.hmm.pi[k])
                 
                 # get A contribution for current sequence
                 for n in range(1,len(seq)):
@@ -52,8 +51,6 @@ class HmmTrainer(object):
                         for k in range(K):
                             newA[kk][k] += zeta[kk][k]
                             newADenom[kk] += zeta[kk][k]
-                            if self.hmm.A[kk][k] > 1e-13 :
-                                ll += zeta[kk][k] * log(self.hmm.A[kk][k])
                 
                 # get the phi contribution
                 for n in range(0,len(seq)):
@@ -62,8 +59,6 @@ class HmmTrainer(object):
                     for kk in range(K):
                         newPhi[kk][emIdx] += gamma[kk]
                         newPhiDenom[kk] += gamma[kk]
-                        if( self.hmm.emissions[kk][emIdx] > 1e-13 ):
-                            ll += gamma[kk] * log(self.hmm.emissions[kk][emIdx])
             
             diff = abs(prev-ll)
             print("iteration",it,"total",ll,"diff",diff)
