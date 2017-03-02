@@ -262,8 +262,15 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
     def getPosterior(self,k,n):
         return self.alpha[k][n] * self.beta[k][n]
     
+    def getGamma(self,n):
+        return [self.getPosterior(k,n) for k in range(self.Hmm.K)]
+    
+    def getZeta(self,n):
+        emissionIDX = self.Hmm.observables.index(self.sequence[n])
+        return  [[self.alpha[kk][n-1]*self.beta[k][n]*self.Hmm.A[kk][k]*self.Hmm.emissions[k][emissionIDX]/self.c[n] for k in range(self.Hmm.K)] for kk in range(self.Hmm.K)]
+    
     def getArgMaxPosterior(self,n):
-        return np.argmax([self.getPosterior(k,n) for k in range(self.Hmm.K)])
+        return np.argmax(self.getGamma(n))
     
 
 class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
