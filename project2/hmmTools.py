@@ -50,7 +50,19 @@ class Hmm(object):
         if( len(emissions) != self.K or len(emissions[0])!=self.N):
             print("error in update, wrong size of emissions")
         self.emissions = emissions
-    
+
+    def printRepr(self):
+        print("hidden\n{}\n".format(" ".join(self.hidden)))
+        print("observables\n{}\n".format(" ".join(self.observables)))
+        print("pi\n{}\n".format(" ".join([str(p) for p in self.pi])))
+        print("transitions")
+        for a in self.A:
+            print("{}".format(" ".join([str(x) for x in a])))
+
+        print("\nemissions")
+        for e in self.emissions:
+            print("{}".format(" ".join([str(x) for x in e])))
+
 class HmmSequenceAnalyzer(object):
     
     __slots__ = ['Hmm','sequence','B']

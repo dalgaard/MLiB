@@ -10,12 +10,18 @@ class Data(object):
 
     Element = namedtuple("Element", "name observed hidden")
 
-    def __init__(self, filenames):
+    def __init__(self, data, hiddenStates, observableStates):
+        self.data = data
+        self.hiddenStates = hiddenStates
+        self.observableStates = observableStates
+
+    @classmethod
+    def fromFiles(cls, filenames):
         data = []
         labelSet = set()
         obsSet = set()
         for fn in filenames:
-            print('reading {}'.format(fn))
+            # print('reading {}'.format(fn))
             with open(fn, 'r') as f:
                 content = f.readlines()
             content = [x.strip() for x in content]
@@ -30,11 +36,15 @@ class Data(object):
                     hid = content[i][1:].strip()
                     labelSet.update(hid)
                     obsSet.update(obs)
-                    data.append(self.Element(name = n, observed = obs, hidden = hid))
+                    data.append(Data.Element(name = n, observed = obs, hidden = hid))
                 i += 1
-        self.data = data
-        self.hiddenStates = [ x for x in labelSet ]
-        self.observableStates = [ x for x in obsSet ]
+        hiddenStates = [ x for x in labelSet ]
+        observableStates = [ x for x in obsSet ]
+        return(cls(data, hiddenStates, observableStates))
+
+    def __iter__(self):
+        for d in self.data:
+            yield d
 
 class Counts(object):
 
@@ -74,7 +84,7 @@ def kFoldGenerator(k, allData):
 
 if __name__ == '__main__':
     fileNames = [os.path.join('Dataset160','set160.{}.labels.txt'.format(x)) for x in range(10)]
-    d = Data(fileNames)
+    d = Data.fromFiles(fileNames)
     c = Counts(d)
     for h in d.hiddenStates:
         print('{} : {}'.format(h, c.piCount.get(h, 'NA')))
