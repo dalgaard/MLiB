@@ -36,7 +36,7 @@ class HmmTrainer(object):
             ll = 0.0
             for seq in observed:
                 sa = ScaledPosteriorSequenceAnalyzer(self.hmm,seq)
-                ll += sa.getLikelihood()
+                ll += sa.getLogLikelihood()
                 
                 # get pi contribution for current sequence
                 gamma = sa.getGamma(0)
@@ -61,7 +61,7 @@ class HmmTrainer(object):
                         newPhiDenom[kk] += gamma[kk]
             
             diff = abs(prev-ll)
-            print("iteration",it,"total",ll,"diff",diff)
+            # print("iteration",it,"total",ll,"diff",diff)
             if( diff<tol or it>maxIt):
                 break
             
@@ -79,8 +79,29 @@ class HmmTrainer(object):
             # update the parameters and calculate the new complete data log likelihood
             self.hmm.update(newPi,newA,newPhi)
             it += 1
+        print("iteration",it,"total",ll,"diff",diff)
             
+def getStartingGuess(f):
+    # get a well shaped initial starting guess
+    piStart  =  [ f() for i in range(K) ]
+    sPi = sum(piStart)
+    piStart  =  [ pi/sPi for pi in piStart ]
+    
+    AStart   = [[ f() for i in range(K) ] for j in range(K)]
+    # set the io and oi transition probabilities to 0
+    AStart[0][K-1] = 0.0 
+    AStart[K-1][0] = 0.0
+    # normalize the rows
+    sA = [ sum(row) for row in AStart]
+    AStart = [[ a/sA[irow] for a in row] for irow, row in enumerate(AStart)]
+    
+    phiStart = [[ f() for i in range(N) ] for j in range(K)]
+    sPhi = [ sum(row) for row in phiStart]
+    phiStart = [[ p/sPhi[irow] for p in row] for irow,row in enumerate(phiStart)]
+    
+    return piStart,AStart,phiStart
 
+ext = sys.argv[1]
 observed=[]
 with open('./Dataset160/set160.0.labels.txt','r') as f:
     lines = f.readlines()
@@ -91,18 +112,20 @@ hidden = ['i','M','o']
 observables = ['A', 'C', 'E', 'D', 'G', 'F', 'I', 'H', 'K', 'M', 'L', 'N', 'Q', 'P', 'S', 'R', 'T', 'W', 'V', 'Y']
 K = len(hidden)
 N = len(observables)
-piStart  =  [ random() for i in range(K) ]
-AStart   = [[ random() for i in range(K) ] for j in range(K)]
-#set the io and oi transition probabilities to 0
-AStart[0][K-1] = 0.0 
-AStart[K-1][0] = 0.0
-phiStart = [[ random() for i in range(N) ] for j in range(K)]
+
+piStart, AStart, phiStart = getStartingGuess(random) #random starting guess
+#piStart, AStart, phiStart = getStartingGuess(lambda : 1.0) #uniform starting guess
+print(piStart)
+print(AStart)
+print(phiStart)
+exit()
+
 hT = HmmTrainer(Hmm(hidden,observables,piStart,AStart,phiStart))
-hT.train(observed)
+hT.train(observed,tol=1e-8,maxIt=1000)
 
 
 with open('../project2/test-sequences-project2.txt','r') as f:
-    post = open("posterior-project2.txt",'w')
+    post = open("posterior-project2-"+ext+".txt",'w')
     post.write("Posterior-decoding using the scaled forward and backward algorithms\n")
     lines = f.readlines()
     for iline,line in enumerate(lines):
