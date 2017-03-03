@@ -61,7 +61,7 @@ class HmmTrainer(object):
                         newPhiDenom[kk] += gamma[kk]
             
             diff = abs(prev-ll)
-            # print("iteration",it,"total",ll,"diff",diff)
+            print("iteration",it,"total",ll,"diff",diff)
             if( diff<tol or it>maxIt):
                 break
             
@@ -79,7 +79,7 @@ class HmmTrainer(object):
             # update the parameters and calculate the new complete data log likelihood
             self.hmm.update(newPi,newA,newPhi)
             it += 1
-        print("iteration",it,"total",ll,"diff",diff)
+        #print("iteration",it,"total",ll,"diff",diff)
             
 def getStartingGuess(f):
     # get a well shaped initial starting guess
@@ -101,13 +101,16 @@ def getStartingGuess(f):
     
     return piStart,AStart,phiStart
 
+
+# Test the implementation !!
 ext = sys.argv[1]
 observed=[]
-with open('./Dataset160/set160.0.labels.txt','r') as f:
-    lines = f.readlines()
-    for iline,line in enumerate(lines):
-        if line.strip().startswith(">") :
-            observed.append(lines[iline+1].strip())
+for i in range(10):
+    with open('./Dataset160/set160.'+str(i)+'.labels.txt','r') as f:
+        lines = f.readlines()
+        for iline,line in enumerate(lines):
+            if line.strip().startswith(">") :
+                observed.append(lines[iline+1].strip())
 hidden = ['i','M','o']
 observables = ['A', 'C', 'E', 'D', 'G', 'F', 'I', 'H', 'K', 'M', 'L', 'N', 'Q', 'P', 'S', 'R', 'T', 'W', 'V', 'Y']
 K = len(hidden)
@@ -115,13 +118,10 @@ N = len(observables)
 
 piStart, AStart, phiStart = getStartingGuess(random) #random starting guess
 #piStart, AStart, phiStart = getStartingGuess(lambda : 1.0) #uniform starting guess
-print(piStart)
-print(AStart)
-print(phiStart)
-exit()
 
 hT = HmmTrainer(Hmm(hidden,observables,piStart,AStart,phiStart))
-hT.train(observed,tol=1e-8,maxIt=1000)
+hT.train(observed,tol=1e-4,maxIt=1000)
+hT.hmm.dump('final-parameters.txt')
 
 
 with open('../project2/test-sequences-project2.txt','r') as f:

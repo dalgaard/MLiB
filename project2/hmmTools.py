@@ -50,6 +50,19 @@ class Hmm(object):
         if( len(emissions) != self.K or len(emissions[0])!=self.N):
             print("error in update, wrong size of emissions")
         self.emissions = emissions
+        
+    def dump(self,fname='hmm.txt'):
+        f = open(fname,'w')
+        f.write("hidden\n{}\n".format(" ".join(self.hidden)))
+        f.write("\nobservables\n{}\n".format(" ".join(self.observables)))
+        f.write("\npi\n{}\n".format(" ".join([str(p) for p in self.pi])))
+        f.write("\ntransitions\n")
+        for a in self.A:
+            f.write("{}".format(" ".join([str(x) for x in a]))+"\n")
+
+        f.write("\nemissions\n")
+        for e in self.emissions:
+            f.write("{}".format(" ".join([str(x) for x in e]))+"\n")
 
     def printRepr(self):
         print("hidden\n{}\n".format(" ".join(self.hidden)))
