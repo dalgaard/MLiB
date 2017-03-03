@@ -1,6 +1,8 @@
-import os
+import os,sys
+sys.path.append('../project2')
 from Data import Data, Counts
 from hmmTools import Hmm
+from hmmTestAgainstProject2 import *
 
 M2o = 'O'
 M2i = 'I'
@@ -33,6 +35,8 @@ def learnAndPrintModel(fileNames):
     emissions = [normalise([c.emissionCount.get((h, o), 0) for o in observables]) for h in NEW_HIDDEN]
     hmm = Hmm(NEW_HIDDEN, observables, pi, A, emissions)
     hmm.printRepr()
+    
+    testAgainstProj2(hmm)
 
 
 if __name__ == '__main__':

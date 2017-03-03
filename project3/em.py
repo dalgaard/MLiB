@@ -2,10 +2,8 @@ import sys
 sys.path.append('../project2')
 from random import random
 from hmmTools import *
+from hmmTestAgainstProject2 import *
 
-def getAnalysis(f,sequenceAnalyzer):
-    trace=sequenceAnalyzer.getTrace()
-    return "# "+trace+"\n; log P(x,z) = "+str(sequenceAnalyzer.logLikelihood(trace))+"\n\n"
 
 class HmmTrainer(object):
     __slots__ = ['hmm']
@@ -119,20 +117,10 @@ N = len(observables)
 piStart, AStart, phiStart = getStartingGuess(random) #random starting guess
 #piStart, AStart, phiStart = getStartingGuess(lambda : 1.0) #uniform starting guess
 
-hT = HmmTrainer(Hmm(hidden,observables,piStart,AStart,phiStart))
+#hT = HmmTrainer(Hmm(hidden,observables,piStart,AStart,phiStart))
+#hT = HmmTrainer(Hmm.fromFile("../project2/hmm-tm.txt"))
+hT = HmmTrainer(Hmm.fromFile('final-parameters.txt'))
 hT.train(observed,tol=1e-4,maxIt=1000)
 hT.hmm.dump('final-parameters.txt')
 
-
-with open('../project2/test-sequences-project2.txt','r') as f:
-    post = open("posterior-project2-"+ext+".txt",'w')
-    post.write("Posterior-decoding using the scaled forward and backward algorithms\n")
-    lines = f.readlines()
-    for iline,line in enumerate(lines):
-        if line.startswith(">"):
-            for f in [post]:
-                f.write(line.strip()+"\n")
-                f.write(lines[iline+1].strip()+"\n")
-            # the scaled posterior and the viterbi decodings are calculated at the same time
-            post.write(getAnalysis(post,ScaledPosteriorSequenceAnalyzer(hT.hmm,lines[iline+1].strip())))
-            post.write(getAnalysis(post,ViterbiSequenceAnalyzer(hT.hmm,lines[iline+1].strip())))
+testAgainstProj2(hT.hmm)
