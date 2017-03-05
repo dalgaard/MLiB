@@ -2,6 +2,7 @@ import os
 from collections import namedtuple
 from random import shuffle
 
+
 class Data(object):
 
     __slots__ = ['data',
@@ -48,6 +49,10 @@ class Data(object):
         return [ d.hidden for d in self.data ]
 
     def __iter__(self):
+        """
+
+        :rtype : Data.Element
+        """
         for d in self.data:
             yield d
 

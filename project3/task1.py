@@ -8,7 +8,7 @@ def normalise(c):
     return [x/s for x in c]
 
 
-def learnAndPrintModel(fileNames):
+def build3StateModel(fileNames, print=False):
     d = Data.fromFiles(fileNames)
     hid = d.hiddenStates
     c = Counts.fromData(d)
@@ -18,9 +18,14 @@ def learnAndPrintModel(fileNames):
     obs = d.observableStates
     emissions = [normalise([c.emissionCount.get((h, o), 0) for o in obs]) for h in hid]
     hmm = Hmm(hid, obs, pi, A, emissions)
-    hmm.printRepr()
+    if print:
+        hmm.printRepr()
+    return hmm
 
 
 if __name__ == '__main__':
-    fileNames = [os.path.join('Dataset160','set160.{}.labels.txt'.format(x)) for x in range(9)]
-    learnAndPrintModel(fileNames)
+    for i in range(10):
+        fileNames = [os.path.join('Dataset160','set160.{}.labels.txt'.format(x)) for x in range(9)]
+        testFile = fileNames[i]
+        del fileNames[i]
+        hmm = build3StateModel(fileNames)
