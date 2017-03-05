@@ -343,7 +343,7 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
         return [ a[k]*b[k] for k in range(self.Hmm.K)]
     
     def getPosterior(self,k,n):
-        return getGamma[k]
+        return self.getGamma(n)[k]
     
     def getZeta(self,n):
         a = self.getAlpha(n-1)
@@ -358,7 +358,7 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
         return p
     
     def getArgMaxPosterior(self,n):
-        return np.argmax([self.getPosterior(k,n) for k in range(self.Hmm.K)])
+        return np.argmax(self.getGamma)
     
 
 class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
