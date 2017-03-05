@@ -112,7 +112,7 @@ class ViterbiTrainer(HmmTrainer):
                 sa = ViterbiSequenceAnalyzer(self.hmm,seq,setB=1)
                 ll += sa.getPosterior()
                 for iTrace in range(nTraces):
-                    c = Counts(seq,sa.getTraceN(iTrace))
+                    c = Counts([seq],[sa.getTraceN(iTrace)])
                     for k,src in enumerate(hid):
                         newPi[k] += c.piCount.get(src, 0) 
                     
