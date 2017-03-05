@@ -1,4 +1,5 @@
-import os
+import os, sys
+sys.path.append('../project2')
 from Data import Data, Counts
 from hmmTools import Hmm
 

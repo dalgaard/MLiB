@@ -41,6 +41,9 @@ class Data(object):
         hiddenStates = [ x for x in labelSet ]
         observableStates = [ x for x in obsSet ]
         return(cls(data, hiddenStates, observableStates))
+    
+    def getObserved(self):
+        return [ d.observed for d in self.data ]
 
     def __iter__(self):
         for d in self.data:

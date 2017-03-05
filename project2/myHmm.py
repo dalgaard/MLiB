@@ -1,6 +1,7 @@
 import time
 from hmmTools import *
 def getAnalysis(f,sequenceAnalyzer):
+    print("Have found",sequenceAnalyzer.getDataLogLikelihood())
     trace=sequenceAnalyzer.getTrace()
     return "# "+trace+"\n; log P(x,z) = "+str(sequenceAnalyzer.logLikelihood(trace))+"\n\n"
             
@@ -29,7 +30,7 @@ with open('test-sequences-project2.txt','r') as f:
             t1 = time.process_time()
             post.write(getAnalysis(post,ScaledPosteriorSequenceAnalyzer(h,lines[iline+1].strip(),1)))
             t2 = time.process_time()
-            viterbi.write(getAnalysis(post,ViterbiSequenceAnalyzer(h,lines[iline+1].strip(),1)))
+            #viterbi.write(getAnalysis(post,ViterbiSequenceAnalyzer(h,lines[iline+1].strip(),1)))
             t3 = time.process_time()
             logPost.write(getAnalysis(logPost,LogSumSequenceAnalyzer(h,lines[iline+1].strip(),1)))
             t4 = time.process_time()

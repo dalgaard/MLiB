@@ -41,6 +41,24 @@ class Hmm(object):
                 i += 1
         return(hmm(hidden,observables,pi,A,emissions))
     
+    def normalize(self):
+        # pi -> we have to start somewhere
+        s = sum(self.pi)
+        for ipi,pi in enumerate(self.pi):
+            self.pi[ipi] = pi/s
+        
+        # normalize the rows of A -> switching the state has to end somewhere
+        s = [sum(row) for row in self.A]
+        for irow,row in enumerate(self.A):
+            for icol,a in enumerate(row):
+                self.A[irow][icol] = a/s[irow] 
+                
+        # normalize emissions -> one symbol has to be emitted
+        s = [sum(row) for row in self.emissions]
+        for irow,row in enumerate(self.emissions):
+            for icol,emission in enumerate(row):
+                self.emissions[irow][icol] =  emission/s[irow] 
+    
     def update(self,pi,A,emissions):
         if( len(pi) != self.K):
             print("error in update, wrong size of pi")
@@ -360,20 +378,7 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
         emissionIDX = self.Hmm.observables.index(self.sequence[n])
         return  [[a[kk]*b[k]*self.Hmm.A[kk][k]*self.Hmm.emissions[k][emissionIDX]/self.c[n] for k in range(self.Hmm.K)] for kk in range(self.Hmm.K)]
     
-    def getLogLikelihood(self):
-        p = 1.0
-        for c in self.c:
-            p+=log(c)
-        return p
-    
-    def getGamma(self,n):
-        return [self.getPosterior(k,n) for k in range(self.Hmm.K)]
-    
-    def getZeta(self,n):
-        emissionIDX = self.Hmm.observables.index(self.sequence[n])
-        return  [[self.alpha[kk][n-1]*self.beta[k][n]*self.Hmm.A[kk][k]*self.Hmm.emissions[k][emissionIDX]/self.c[n] for k in range(self.Hmm.K)] for kk in range(self.Hmm.K)]
-    
-    def getLogLikelihood(self):
+    def getDataLogLikelihood(self):
         p = 1.0
         for c in self.c:
             p+=log(c)
@@ -385,13 +390,15 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
 
 class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
     
-    __slots__ = ['alpha','beta','work']
+    __slots__ = ['alpha','beta','work','dataLogLikelihood']
     
     def __init__(self, Hmm, observedSequence, setB=0):
         HmmSequenceAnalyzer.__init__(self,Hmm,observedSequence, setB=setB)
         self.work=[[float("-inf")  for k in range(Hmm.K)] for n in range(2)]
         self.forward()
         self.backward()
+        # for performance reasons we store the value of this function
+        self.dataLogLikelihood=self.getDataLogLikelihood()
     
     def forward(self):
         N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
@@ -484,6 +491,22 @@ class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
         return self.loopBackward([self.beta[sB][k] for k in range(K)],IB,n,False)
     
     def getArgMaxPosterior(self,n):
+        return np.argmax(self.getGamma(n))
+    
+    def getGamma(self,n):
         a = self.getAlpha(n)
         b = self.getBeta(n)
-        return np.argmax([ a[k] + b[k] for k in range(self.Hmm.K)])
+        return [ a[k] + b[k] - self.dataLogLikelihood for k in range(self.Hmm.K)]
+    
+    def getZeta(self,n):
+        a = self.getAlpha(n-1)
+        b = self.getBeta(n)
+        emissionIDX = self.Hmm.observables.index(self.sequence[n])
+        return  [[a[kk] + b[k] + log(self.Hmm.A[kk][k]) + log(self.Hmm.emissions[k][emissionIDX]) - self.dataLogLikelihood for k in range(self.Hmm.K)] for kk in range(self.Hmm.K)]
+    
+    def getDataLogLikelihood(self):
+        N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
+        ll = float("-inf")
+        for alpha in  self.getAlpha(N-1):
+            ll = logsum(ll,alpha)
+        return ll
