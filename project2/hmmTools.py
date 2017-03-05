@@ -87,16 +87,17 @@ class Hmm(object):
             f.write("{}".format(" ".join([str(x) for x in e]))+"\n")
 
     def printRepr(self):
-        print("hidden\n{}\n".format(" ".join(self.hidden)))
-        print("observables\n{}\n".format(" ".join(self.observables)))
-        print("pi\n{}\n".format(" ".join([str(p) for p in self.pi])))
-        print("transitions")
+        print("\\mathbf\{X\}=\\{" + ", ".join(self.hidden) + "\\}")
+        print("\\mathbf\{Z\}=\\{" + ", ".join(self.observables) + "\\}")
+        print("\\pi=\\left[\\begin{array}{}" + " & ".join(["{:1.4f}".format(p) for p in self.pi]) + "\\end{array}\\right]")
+        print("A=\\left[\\begin{array}{}")
         for a in self.A:
-            print("{}".format(" ".join([str(x) for x in a])))
-
-        print("\nemissions")
+            print(" & ".join(["{:1.4f}".format(x) for x in a]), end="\\\\\n")
+        print("\\end{array}\\right]")
+        print("\n\\phi=\\left[\\begin{array}{}")
         for e in self.emissions:
-            print("{}".format(" ".join([str(x) for x in e])))
+            print(" & ".join(["{:1.4f}".format(x) for x in e]), end="\\\\\n")
+        print("\\end{array}\\right]")
 
 class HmmSequenceAnalyzer(object):
     

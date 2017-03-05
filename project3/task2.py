@@ -13,7 +13,7 @@ def normalise(c):
     return [x/s for x in c]
 
 
-def learnAndPrintModel(fileNames):
+def learnAndPrint4StateModel(fileNames, printModel=False):
     data = Data.fromFiles(fileNames)
     data4states = []
     hidden = data.hiddenStates
@@ -28,18 +28,20 @@ def learnAndPrintModel(fileNames):
                 newHid += M2o if newHid.endswith(M2o) or newHid.endswith('i') else M2i
         data4states.append(Data.Element(d.name, d.observed, newHid))
     data = Data(data4states, NEW_HIDDEN, observables)
-    c = Counts(data)
+    c = Counts.fromData(data)
     piC = [c.piCount.get(h, 0) for h in NEW_HIDDEN]
     pi = normalise(piC)
     A = [normalise([c.transitionCount.get((src, dest), 0) for dest in NEW_HIDDEN]) for src in NEW_HIDDEN]
     emissions = [normalise([c.emissionCount.get((h, o), 0) for o in observables]) for h in NEW_HIDDEN]
     hmm = Hmm(NEW_HIDDEN, observables, pi, A, emissions)
-    hmm.printRepr()
+    if printModel:
+        hmm.printRepr()
     
     testAgainstProj2(hmm)
+    return(hmm)
 
 
 if __name__ == '__main__':
     fileNames = [os.path.join('Dataset160','set160.{}.labels.txt'.format(x)) for x in range(9)]
-    learnAndPrintModel(fileNames)
+    learnAndPrint4StateModel(fileNames)
 

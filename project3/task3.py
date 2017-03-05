@@ -50,13 +50,12 @@ if __name__ == '__main__':
         fn = [os.path.join("Dataset160",f) for f in fileNames]
         hmm = build3StateModel(fn)
         outfile = os.path.join(cv,"{}_task3_{}".format(testFile[0:-4], i))
-        (t,p, w) = predict(hmm, os.path.join("Dataset160", testFile), outfile)
+        (t,p) = predict(hmm, os.path.join("Dataset160", testFile), outfile)
         proc = Popen(["python", "compare_tm_pred.py", t, p], stdout=PIPE)
         out = str(proc.communicate()[0])[2:-1]
         aOut = [ o for o in out.split('\\n') if not o == '' ]
         z = zip(*[iter(aOut)] * 2)
         localAc = []
-        weights = []
         for name, result in z:
             assert isinstance(name, str)
             m = re.search("AC = (.+)", result)
@@ -69,7 +68,6 @@ if __name__ == '__main__':
                     acs.append(ac)
                 else:
                     localAc.append(ac)
-                    weights.append(w)
         print(testFile)
 
     print("Summary of individual folds:")
