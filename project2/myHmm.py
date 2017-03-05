@@ -27,7 +27,7 @@ with open('test-sequences-project2.txt','r') as f:
                 f.write(lines[iline+1].strip()+"\n")
             # the scaled posterior and the viterbi decodings are calculated at the same time
             t1 = time.process_time()
-            post.write(getAnalysis(post,ScaledPosteriorSequenceAnalyzer(h,lines[iline+1].strip())))
+            post.write(getAnalysis(post,ScaledPosteriorSequenceAnalyzer(h,lines[iline+1].strip(),1)))
             t2 = time.process_time()
             viterbi.write(getAnalysis(post,ViterbiSequenceAnalyzer(h,lines[iline+1].strip(),1)))
             t3 = time.process_time()
