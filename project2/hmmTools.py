@@ -242,11 +242,12 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
         
         # initialize c as the sum of the deltas and update delta
         self.c = [ sum(delta) if n==0 else 0.0 for n in range(N) ]
-        delta = [ d/self.c[0] for d in delta ]
+        #delta = [ d/self.c[0] for d in delta ]
         
         # initialize alpha and omega
-        self.alpha = [[ delta[k] if n==0 else 0.0  for k in range(K)] for n in range(S) ]
-        self.loopForward(delta,0,N-1,True)
+        #self.alpha = [[ delta[k] if n==0 else 0.0  for k in range(K)] for n in range(S) ]
+        self.alpha = [[ delta[k]/self.c[n] if n==0 else 0.0 for k in range(K) ] for n in range(S) ]
+        self.loopForward(self.alpha[0],0,N-1,True)
         
                 
     def loopForward(self, firstCol ,start,end,fillAlpha):
@@ -282,7 +283,7 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
         
         # initialize
         self.beta = [[ 1.0 if n==S-1 else 0.0 for k in range(K) ] for n in range(S) ]
-        self.loopBackward([1.0 for k in range(K)],N-1,0,True)
+        self.loopBackward(self.beta[S-1],N-1,0,True)
         
                     
     # start and end inclusive, start is the idx of the firstCol and end is the index of the column to be returned
@@ -302,7 +303,8 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
             for k in range(K):
                 for kk in range(K):
                     # here we could have pulled the scaling out, for simpler code structure it is kept here
-                    self.work[nidx%2][k] += (self.work[(n+1)%2][kk]/self.c[n+1]) * self.Hmm.A[k][kk] * self.Hmm.emissions[kk][emissionIDX]
+                    self.work[nidx%2][k] += (self.work[(nidx+1)%2][kk]/self.c[n+1]) * self.Hmm.A[k][kk] * self.Hmm.emissions[kk][emissionIDX]
+                    #print(self.work[(nidx+1)%2][kk])
                     
             # reinit work for next round
             for k in range(K):
@@ -342,9 +344,6 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
         b = self.getBeta(n)
         return [ a[k]*b[k] for k in range(self.Hmm.K)]
     
-    def getPosterior(self,k,n):
-        return self.getGamma(n)[k]
-    
     def getZeta(self,n):
         a = self.getAlpha(n-1)
         b = self.getBeta(n)
@@ -358,7 +357,7 @@ class ScaledPosteriorSequenceAnalyzer(HmmSequenceAnalyzer):
         return p
     
     def getArgMaxPosterior(self,n):
-        return np.argmax(self.getGamma)
+        return np.argmax(self.getGamma(n))
     
 
 class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
