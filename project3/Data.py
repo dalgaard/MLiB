@@ -44,6 +44,8 @@ class Data(object):
     
     def getObserved(self):
         return [ d.observed for d in self.data ]
+    def getHidden(self):
+        return [ d.hidden for d in self.data ]
 
     def __iter__(self):
         for d in self.data:
@@ -55,13 +57,11 @@ class Counts(object):
                  'transitionCount',
                  'emissionCount']
 
-    def __init__(self, data):
+    def __init__(self, observed, hidden):
         self.piCount = dict()
         self.transitionCount = dict()
         self.emissionCount = dict()
-        for e in data.data:
-            obs = e.observed
-            hid = e.hidden
+        for obs, hid in zip(observed,hidden):
             for src, dest in zip(hid, hid[1:]):
                 trans = (src, dest)
                 self.transitionCount[trans] = self.transitionCount.get(trans, 0) + 1
@@ -69,6 +69,10 @@ class Counts(object):
                 e = (h, o)
                 self.emissionCount[e] = self.emissionCount.get(e, 0) + 1
             self.piCount[hid[0]] = self.piCount.get(hid[0], 0) + 1
+            
+    @classmethod
+    def fromData(cls, data):
+        return cls(data.getObserved(),data.getHidden())
 
 def kFoldGenerator(k, allData):
     data = allData.data

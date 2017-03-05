@@ -155,13 +155,19 @@ class ViterbiSequenceAnalyzer(HmmSequenceAnalyzer):
         # initialize omega and do the forward sweep storing a bunch of columns
         self.omega = [[ delta[k] if n==0 else float("-inf") for k  in range(K)] for n in range(S)]
         self.lastCol = self.loopForward(delta,0,N-1,True)
+        self.viterbiTrace = self.calcTrace(0)
+        
+    def calcTrace(self,iTrace):
+        N,K,B,S = HmmSequenceAnalyzer.getConstants(self)
+        
+        lCsorted, iSorted = zip(*sorted(zip(self.lastCol,[ k for k,c in enumerate(self.lastCol)]),reverse=True))
         
         # initialize
-        self.viterbiTrace = [ np.argmax(self.lastCol) if n==N-1 else -1 for n in range(N) ]
+        viterbiTrace = [ iSorted[iTrace] if n==N-1 else -1 for n in range(N) ]
         
         # calculate subsequent steps
         for n in range(N-2,-1,-1):
-            kprev = self.viterbiTrace[n+1]
+            kprev = viterbiTrace[n+1]
             emissionIDX = self.Hmm.observables.index(self.sequence[n+1])
             ompri = [ -float("Inf") for k in range(K) ]
             sO = n//B
@@ -169,7 +175,9 @@ class ViterbiSequenceAnalyzer(HmmSequenceAnalyzer):
             omega = self.loopForward(self.omega[sO],IO,n,False)
             for k in range(K):
                 ompri[k] = omega[k] + log(self.Hmm.A[k][kprev]) + log(self.Hmm.emissions[kprev][emissionIDX]) 
-            self.viterbiTrace[n] = np.argmax(ompri)
+            viterbiTrace[n] = np.argmax(ompri)
+            
+        return viterbiTrace
 
     # start and end inclusive, start is the idx of the firstCol and end is the index of the column to be returned
     def loopForward(self, firstCol ,start,end,fillOmega):
@@ -200,6 +208,12 @@ class ViterbiSequenceAnalyzer(HmmSequenceAnalyzer):
         trace = ""
         for n in range(len(self.sequence)):
             trace += self.Hmm.hidden[self.viterbiTrace[n]]
+        return trace
+    def getTraceN(self,iTrace):
+        trace = ""
+        vT = self.calcTrace(iTrace)
+        for n in range(len(self.sequence)):
+            trace += self.Hmm.hidden[vT[n]]
         return trace
 
     def getPosterior(self):
@@ -491,18 +505,24 @@ class LogSumSequenceAnalyzer(HmmSequenceAnalyzer):
         return self.loopBackward([self.beta[sB][k] for k in range(K)],IB,n,False)
     
     def getArgMaxPosterior(self,n):
-        return np.argmax(self.getGamma(n))
+        return np.argmax(self.getLogGamma(n))
     
-    def getGamma(self,n):
+    def getLogGamma(self,n):
         a = self.getAlpha(n)
         b = self.getBeta(n)
         return [ a[k] + b[k] - self.dataLogLikelihood for k in range(self.Hmm.K)]
     
-    def getZeta(self,n):
+    def getGamma(self,n):
+        return [ exp(g) for g in self.getLogGamma(n)]
+    
+    def getLogZeta(self,n):
         a = self.getAlpha(n-1)
         b = self.getBeta(n)
         emissionIDX = self.Hmm.observables.index(self.sequence[n])
-        return  [[a[kk] + b[k] + log(self.Hmm.A[kk][k]) + log(self.Hmm.emissions[k][emissionIDX]) - self.dataLogLikelihood for k in range(self.Hmm.K)] for kk in range(self.Hmm.K)]
+        return [[a[kk]+b[k]+log(self.Hmm.A[kk][k])+log(self.Hmm.emissions[k][emissionIDX])-self.dataLogLikelihood for k in range(self.Hmm.K)] for kk in range(self.Hmm.K)]
+    
+    def getZeta(self,n):
+        return [[exp(r) for r in row] for row in self.getLogZeta(n)]
     
     def getDataLogLikelihood(self):
         N,K,B,S = HmmSequenceAnalyzer.getConstants(self)

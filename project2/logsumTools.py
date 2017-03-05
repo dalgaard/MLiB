@@ -1,5 +1,7 @@
 import math
 
+def exp(a):
+    return math.exp(a)
 def log(a):
     return math.log(a) if a > 1e-13 else float("-inf")
 def logsum(logX,logY):

@@ -11,7 +11,7 @@ def normalise(c):
 def learnAndPrintModel(fileNames):
     d = Data.fromFiles(fileNames)
     hid = d.hiddenStates
-    c = Counts(d)
+    c = Counts.fromData(d)
     piC = [c.piCount.get(h, 0) for h in hid]
     pi = normalise(piC)
     A = [normalise([c.transitionCount.get((src, dest), 0) for dest in hid]) for src in hid]
