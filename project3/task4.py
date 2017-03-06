@@ -1,8 +1,9 @@
+import os,sys
+sys.path.append('../project2')
 from Data import Data
 from hmmTools import ViterbiHatSequenceAnalyzer
 from subprocess import Popen, PIPE
 import math
-import os
 import re
 from numpy import nanmean, nanstd, nanvar
 from task2 import learnAndPrint4StateModel

@@ -13,6 +13,10 @@ class Hmm(object):
         self.K = len(self.hidden)
         self.N = len(self.observables)
         
+        self.pi = [ 0.0 for i in range(self.K)]
+        self.A = [[ 0.0 for j in range(self.K)] for i in range(self.K)]
+        self.emissions = [[ 0.0 for j in range(self.N)] for i in range(self.K)]
+        
         self.update(pi,A,emissions)
     
     @classmethod
@@ -62,13 +66,18 @@ class Hmm(object):
     def update(self,pi,A,emissions):
         if( len(pi) != self.K):
             print("error in update, wrong size of pi")
-        self.pi = pi
+        for ip, p in enumerate(pi):
+            self.pi[ip] = p
         if( len(A) != self.K or len(A[0])!=self.K):
             print("error in update, wrong size of A")
-        self.A = A
+        for irow, row in enumerate(A):
+            for icol,col in enumerate(row):
+                self.A[irow][icol] = col
         if( len(emissions) != self.K or len(emissions[0])!=self.N):
             print("error in update, wrong size of emissions")
-        self.emissions = emissions
+        for irow, row in enumerate(emissions):
+            for icol,col in enumerate(row):
+                self.emissions[irow][icol] = col
         
     def dump(self,fname='hmm.txt'):
         if( isinstance(fname, str)):

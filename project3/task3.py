@@ -1,9 +1,10 @@
+import os,sys
+sys.path.append('../project2')
 from task1 import build3StateModel
 from Data import Data
 from hmmTools import ViterbiHatSequenceAnalyzer
 from subprocess import Popen, PIPE
 import math
-import os
 import re
 from numpy import nanmean, nanstd, nanvar
 
@@ -50,7 +51,7 @@ if __name__ == '__main__':
         fn = [os.path.join("Dataset160",f) for f in fileNames]
         hmm = build3StateModel(fn)
         outfile = os.path.join(cv,"{}_task3_{}".format(testFile[0:-4], i))
-        (t,p) = predict(hmm, os.path.join("Dataset160", testFile), outfile)
+        (t,p,w) = predict(hmm, os.path.join("Dataset160", testFile), outfile)
         proc = Popen(["python", "compare_tm_pred.py", t, p], stdout=PIPE)
         out = str(proc.communicate()[0])[2:-1]
         aOut = [ o for o in out.split('\\n') if not o == '' ]

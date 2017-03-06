@@ -35,7 +35,7 @@ class PosteriorTrainer(HmmTrainer):
         HmmTrainer.__init__(self, hmm)
         self.sequenceAnalyzer = sequenceAnalyzer
         
-    def train(self,observed,maxIt=2000,tol=1e-4):
+    def train(self,observed,maxIt=2000,tol=1e-1):
         K = self.hmm.K
         N = self.hmm.N
         
@@ -84,6 +84,7 @@ class PosteriorTrainer(HmmTrainer):
             # update the parameters and calculate the new complete data log likelihood
             self.hmm.update(newPi,newA,newPhi)
             self.hmm.normalize()
+            print(self.hmm.pi)
             it += 1
             
 class ViterbiTrainer(HmmTrainer):
@@ -91,7 +92,7 @@ class ViterbiTrainer(HmmTrainer):
     def __init__(self, hmm):
         HmmTrainer.__init__(self, hmm)
         
-    def train(self,observed,pseudo=0.0,nTraces=1,maxIt=2000,tol=1e-4):
+    def train(self,observed,pseudo=0.0,nTraces=1,maxIt=2000,tol=1e-4,piConstraints=[],aConstraints=[],phiConstraints=[]):
         K = self.hmm.K
         N = self.hmm.N
         
@@ -123,7 +124,7 @@ class ViterbiTrainer(HmmTrainer):
                     for i,src in enumerate(hid):
                         for j,dest in enumerate(obs):
                             newPhi[i][j] += c.emissionCount.get((src, dest), 0)
-                
+            
             
             diff = float("inf") if it == 0 else abs(ll-prev)
             self.currentState = "#"+"{:8d}".format(it)+"\t"+"{:10.6g}".format(ll)+"\t"+"{:.6g}".format(diff)
@@ -133,6 +134,13 @@ class ViterbiTrainer(HmmTrainer):
             
             prev = ll
             
+            # impose the constraints
+            for c in piConstraints:
+                newPi[c] = pseudo
+            for i,j in aConstraints:
+                newA[i][j] = pseudo
+            for i,j in phiConstraints:
+                newPhi[i][j] = pseudo
             # update the parameters and calculate the new complete data log likelihood
             self.hmm.update(newPi,newA,newPhi)
             self.hmm.normalize()
